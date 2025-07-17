@@ -14,34 +14,26 @@ default:
     @echo -e "{{BLUE}}🌳 Tree - Modern Rust Development Workflow{{NC}}"
     @echo "=================================================="
     @echo ""
-    @echo -e "{{GREEN}}Development Commands:{{NC}}"
-    @echo "  just go           - 🚀 Complete two-phase fast-fail workflow"
-    @echo "  just dev          - Modern watch mode with testing"
-    @echo "  just test         - Run all tests"
-    @echo "  just check        - Quick code validation"
+    @echo -e "{{GREEN}}🚀 Main Workflow:{{NC}}"
+    @echo "  just go           - Complete two-phase fast-fail workflow"
     @echo ""
-    @echo -e "{{GREEN}}Quality Assurance:{{NC}}"
-    @echo "  just ci           - Comprehensive CI checks"
+    @echo -e "{{GREEN}}📋 Individual Steps:{{NC}}"
+    @echo "  just fmt          - Format code"
+    @echo "  just test         - Run all tests"
+    @echo "  just doc          - Run documentation tests"
+    @echo "  just coverage     - Generate coverage report"
     @echo "  just lint-prod    - Ultra-strict production linting"
     @echo "  just lint-tests   - Pragmatic test linting"
-    @echo "  just lint-all     - Mixed approach (default)"
-    @echo "  just fmt          - Format code"
-    @echo "  just coverage     - Coverage analysis"
+    @echo "  just build        - Build release binary"
+    @echo "  just deploy       - Copy binary to ~/bin"
     @echo ""
-    @echo -e "{{GREEN}}Two-Phase Professional Workflow:{{NC}}"
-    @echo "  just phase1-test     - Phase 1: Coverage + Tests + Lint (Comprehensive)"
-    @echo "  just phase1-test-fast - Phase 1: Coverage + Tests + Lint (Fast-Fail)"
-    @echo "  just phase2-ship     - Phase 2: Build/Commit/Push/Deploy"
-    @echo "  just dev-workflow    - Complete two-phase workflow (comprehensive)"
-    @echo "  just dev-workflow-fast - Fast-fail workflow (basic validation only)"
-    @echo ""
-    @echo -e "{{GREEN}}Performance & Analysis:{{NC}}"
-    @echo "  just bench        - Run benchmarks"
-    @echo "  just audit        - Security audit"
-    @echo ""
-    @echo -e "{{GREEN}}Utilities:{{NC}}"
+    @echo -e "{{GREEN}}🔧 Development:{{NC}}"
+    @echo "  just dev          - Watch mode with testing"
+    @echo "  just check        - Quick validation"
     @echo "  just clean        - Clean build artifacts"
-    @echo "  just install-tools - Install development tools"
+    @echo ""
+    @echo -e "{{GREEN}}📊 Analysis:{{NC}}"
+    @echo "  just audit        - Security audit"
     @echo "  just version      - Show current version"
 
 # Common clippy flags - Rust master approach
@@ -49,9 +41,65 @@ common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clip
 prod_flags := common_flags + " -W clippy::unwrap_used -W clippy::expect_used -W clippy::missing_docs_in_private_items"
 test_flags := common_flags + " -A clippy::unwrap_used -A clippy::expect_used"
 
-# Modern development workflow with watch mode
+# ═══════════════════════════════════════════════════════════════════════════
+# Individual Step Commands (Granular Control)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Format code
+fmt:
+    @echo -e "{{BLUE}}📝 Formatting code...{{NC}}"
+    cargo fmt --all
+
+# Run all tests
+test:
+    @echo -e "{{BLUE}}🧪 Running all tests...{{NC}}"
+    cargo test --workspace --all-features --all-targets
+
+# Run documentation tests
+doc:
+    @echo -e "{{BLUE}}📚 Running documentation tests...{{NC}}"
+    cargo test --workspace --doc --all-features
+
+# Generate coverage report
+coverage:
+    @echo -e "{{BLUE}}📊 Generating coverage report...{{NC}}"
+    @if command -v cargo-llvm-cov >/dev/null 2>&1; then \
+        cargo llvm-cov test --workspace --all-features --all-targets --html; \
+        echo -e "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"; \
+    else \
+        echo -e "{{YELLOW}}Installing cargo-llvm-cov...{{NC}}"; \
+        cargo install cargo-llvm-cov; \
+        cargo llvm-cov test --workspace --all-features --all-targets --html; \
+        echo -e "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"; \
+    fi
+
+# Ultra-strict production linting
+lint-prod:
+    @echo -e "{{BLUE}}🔍 Ultra-strict production linting...{{NC}}"
+    cargo clippy --lib --bins -- {{prod_flags}}
+
+# Pragmatic test linting
+lint-tests:
+    @echo -e "{{BLUE}}🧪 Pragmatic test linting...{{NC}}"
+    cargo clippy --tests -- {{test_flags}}
+
+# Build release binary
+build:
+    @echo -e "{{BLUE}}🔨 Building release binary...{{NC}}"
+    cargo build --release
+
+# Deploy binary to ~/bin
+deploy:
+    @echo -e "{{BLUE}}📦 Deploying binary...{{NC}}"
+    just copy-binary release
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Development Utilities
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Watch mode development
 dev:
-    @echo -e "{{BLUE}}🔄 Starting modern development workflow...{{NC}}"
+    @echo -e "{{BLUE}}🔄 Starting watch mode...{{NC}}"
     @if command -v cargo-watch >/dev/null 2>&1; then \
         cargo watch -x "test --workspace" -x "clippy --workspace --all-targets --all-features -- {{test_flags}}"; \
     else \
@@ -60,41 +108,13 @@ dev:
         cargo watch -x "test --workspace" -x "clippy --workspace --all-targets --all-features -- {{test_flags}}"; \
     fi
 
-# Modern testing
-test:
-    @echo -e "{{BLUE}}🧪 Running all tests...{{NC}}"
-    cargo test --workspace --all-features --all-targets
-
-# Quick code validation
+# Quick validation
 check:
     @echo -e "{{BLUE}}⚡ Quick validation...{{NC}}"
     cargo check --workspace --all-targets --all-features
     cargo fmt --all -- --check
 
-# Comprehensive CI checks (Streamlined - use phase1-test for full workflow)
-ci:
-    @echo -e "{{BLUE}}🔬 Comprehensive CI Checks{{NC}}"
-    @echo "================================"
-    @echo ""
 
-    # Step 1: Format check
-    @echo -e "{{YELLOW}}📝 Format validation...{{NC}}"
-    cargo fmt --all -- --check
-
-    # Step 2: Production linting
-    @echo -e "{{YELLOW}}🔍 Production code linting...{{NC}}"
-    just lint-prod
-
-    # Step 3: Test suite
-    @echo -e "{{YELLOW}}🧪 Test suite...{{NC}}"
-    cargo test --workspace --all-features --all-targets
-
-    # Step 4: Documentation tests
-    @echo -e "{{YELLOW}}📚 Documentation tests...{{NC}}"
-    cargo test --workspace --doc --all-features
-
-    @echo -e "{{GREEN}}✅ All CI checks passed!{{NC}}"
-    @echo -e "{{BLUE}}💡 For full coverage analysis, use 'just phase1-test'{{NC}}"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Professional Two-Phase Development Workflow
@@ -103,56 +123,10 @@ ci:
 # Phase 2: Build/Commit/Push/Deploy (Manual Trigger)
 # ═══════════════════════════════════════════════════════════════════════════
 
-# PHASE 1: Code & Extensive Testing (Professional Grade)
+
+
+# PHASE 1: Code & Extensive Testing (Fast-Fail)
 phase1-test:
-    @echo -e "{{BLUE}}🧪 PHASE 1: Code & Extensive Testing{{NC}}"
-    @echo -e "{{YELLOW}}Running MOST extensive tests to find/fix all errors...{{NC}}"
-    @echo "========================================================"
-    @echo ""
-
-    # Step 1: Auto-formatting
-    @echo -e "{{BLUE}}Step 1: Auto-formatting code...{{NC}}"
-    cargo fmt --all
-
-    # Step 2: Run all tests with coverage data collection
-    @echo -e "{{BLUE}}Step 2: Running all tests with coverage data collection...{{NC}}"
-    @if command -v cargo-llvm-cov >/dev/null 2>&1; then \
-        cargo llvm-cov test --workspace --all-features --all-targets --no-report; \
-        echo -e "{{GREEN}}✅ All tests passed, coverage data collected{{NC}}"; \
-    else \
-        echo -e "{{YELLOW}}Installing cargo-llvm-cov...{{NC}}"; \
-        cargo install cargo-llvm-cov; \
-        cargo llvm-cov test --workspace --all-features --all-targets --no-report; \
-        echo -e "{{GREEN}}✅ All tests passed, coverage data collected{{NC}}"; \
-    fi
-
-    # Step 3: Generate coverage report
-    @echo -e "{{BLUE}}Step 3: Generating coverage report...{{NC}}"
-    cargo llvm-cov report --html
-    @echo -e "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
-
-    # Step 4: Documentation tests
-    @echo -e "{{BLUE}}Step 4: Documentation tests validation...{{NC}}"
-    cargo test --workspace --doc --all-features
-
-    # Step 5: Ultra-strict production linting
-    @echo -e "{{BLUE}}Step 5: Ultra-strict production code linting...{{NC}}"
-    just lint-prod
-
-    # Step 6: Pragmatic test linting
-    @echo -e "{{BLUE}}Step 6: Pragmatic test code linting...{{NC}}"
-    just lint-tests
-
-    # Step 7: Format validation (final check)
-    @echo -e "{{BLUE}}Step 7: Final format validation...{{NC}}"
-    cargo fmt --all -- --check
-
-    @echo ""
-    @echo -e "{{GREEN}}✅ PHASE 1 COMPLETE: All tests passed, code ready for commit!{{NC}}"
-    @echo -e "{{BLUE}}💡 Next: Run 'just phase2-ship' when ready to build/commit/push{{NC}}"
-
-# PHASE 1: Code & Extensive Testing (FAST-FAIL VERSION)
-phase1-test-fast:
     @echo -e "{{BLUE}}🧪 PHASE 1: Code & Extensive Testing (FAST-FAIL){{NC}}"
     @echo -e "{{YELLOW}}Running MOST extensive tests - STOPPING at FIRST failure...{{NC}}"
     @echo "========================================================"
@@ -241,45 +215,7 @@ phase2-ship:
     @echo ""
     @echo -e "{{GREEN}}✅ PHASE 2 COMPLETE: Version incremented, built, deployed, committed, and pushed!{{NC}}"
 
-# Complete two-phase workflow (for full automation)
-dev-workflow:
-    @echo -e "{{BLUE}}🔄 Complete Two-Phase Development Workflow{{NC}}"
-    @echo -e "{{YELLOW}}Phase 1: Code & Extensive Testing...{{NC}}"
-    just phase1-test
-    @echo -e "{{YELLOW}}Phase 2: Build/Commit/Push/Deploy...{{NC}}"
-    just phase2-ship
-    @echo -e "{{GREEN}}🎉 Complete development workflow finished!{{NC}}"
 
-# Fast-fail development workflow (stops at first failure)
-dev-workflow-fast:
-    @echo -e "{{BLUE}}⚡ Fast-Fail Development Workflow{{NC}}"
-    @echo -e "{{YELLOW}}Stopping at FIRST failure for rapid feedback...{{NC}}"
-    @echo "========================================================"
-    @echo ""
-
-    # Step 1: Quick format check (fast fail)
-    @echo -e "{{BLUE}}Step 1: Quick format check...{{NC}}"
-    cargo fmt --all -- --check
-
-    # Step 2: Quick compile check (fast fail)
-    @echo -e "{{BLUE}}Step 2: Quick compile check...{{NC}}"
-    cargo check --workspace --all-targets --all-features
-
-    # Step 3: Run tests (fast fail on first test failure)
-    @echo -e "{{BLUE}}Step 3: Running tests (fast fail)...{{NC}}"
-    cargo test --workspace --all-features --all-targets
-
-    # Step 4: Production linting (fast fail)
-    @echo -e "{{BLUE}}Step 4: Production linting (fast fail)...{{NC}}"
-    just lint-prod
-
-    # Step 5: Test linting (fast fail)
-    @echo -e "{{BLUE}}Step 5: Test linting (fast fail)...{{NC}}"
-    just lint-tests
-
-    @echo ""
-    @echo -e "{{GREEN}}✅ Fast-fail checks passed! Ready for full workflow.{{NC}}"
-    @echo -e "{{BLUE}}💡 Run 'just dev-workflow' for complete coverage analysis{{NC}}"
 
 # Complete two-phase fast-fail workflow - perfect for rapid development
 go:
@@ -290,7 +226,7 @@ go:
 
     # PHASE 1: Comprehensive fast-fail testing and validation
     @echo -e "{{BLUE}}🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation{{NC}}"
-    just phase1-test-fast
+    just phase1-test
 
     @echo ""
     @echo -e "{{GREEN}}✅ PHASE 1 COMPLETE - All validation passed!{{NC}}"
@@ -306,69 +242,19 @@ go:
     @echo -e "{{GREEN}}✅ Phase 1: Testing & Validation{{NC}}"
     @echo -e "{{GREEN}}✅ Phase 2: Build/Commit/Push/Deploy{{NC}}"
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Rust Master Linting Commands
-# ═══════════════════════════════════════════════════════════════════════════
 
-# Ultra-strict production linting
-lint-prod:
-    @echo -e "{{BLUE}}🔍 Ultra-strict production linting...{{NC}}"
-    @echo -e "{{YELLOW}}   → Pedantic: Very strict style/performance lints{{NC}}"
-    @echo -e "{{YELLOW}}   → Nursery: Experimental bleeding-edge lints{{NC}}"
-    @echo -e "{{YELLOW}}   → Cargo: Cargo.toml best practices{{NC}}"
-    @echo -e "{{YELLOW}}   → Unwrap/Expect: Forbidden in production{{NC}}"
-    cargo clippy --lib --bins -- {{prod_flags}}
-    @echo -e "{{GREEN}}✅ Production code passes ultra-strict checks!{{NC}}"
 
-# Pragmatic test linting
-lint-tests:
-    @echo -e "{{BLUE}}🧪 Pragmatic test linting...{{NC}}"
-    @echo -e "{{YELLOW}}   → Unwrap/Expect: Allowed for fast test failures{{NC}}"
-    @echo -e "{{YELLOW}}   → Focus: Logic issues, not defensive programming{{NC}}"
-    cargo clippy --tests -- {{test_flags}}
-    @echo -e "{{GREEN}}✅ Test code passes pragmatic checks!{{NC}}"
 
-# Mixed approach linting (default)
-lint-all:
-    @echo -e "{{BLUE}}🌍 Mixed approach linting...{{NC}}"
-    @echo -e "{{YELLOW}}   → Production rules for src/, pragmatic for tests/{{NC}}"
-    cargo clippy --workspace --all-targets --all-features -- {{test_flags}}
-    @echo -e "{{GREEN}}✅ All code passes mixed approach checks!{{NC}}"
-
-# Default lint command
-lint: lint-all
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Quality Assurance & Analysis
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Format code
-fmt:
-    @echo -e "{{BLUE}}📝 Formatting code...{{NC}}"
-    cargo fmt --all
 
-# Check formatting
-fmt-check:
-    @echo -e "{{BLUE}}🔍 Checking formatting...{{NC}}"
-    cargo fmt --all -- --check
 
-# Coverage analysis
-coverage:
-    @echo -e "{{BLUE}}📊 Running coverage analysis...{{NC}}"
-    @if command -v cargo-llvm-cov >/dev/null 2>&1; then \
-        cargo llvm-cov --workspace --html; \
-        echo -e "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"; \
-    else \
-        echo -e "{{YELLOW}}Installing cargo-llvm-cov...{{NC}}"; \
-        cargo install cargo-llvm-cov; \
-        cargo llvm-cov --workspace --html; \
-        echo -e "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"; \
-    fi
-
-# Run benchmarks
-bench:
-    @echo -e "{{BLUE}}⚡ Running benchmarks...{{NC}}"
-    cargo bench --workspace
+# ═══════════════════════════════════════════════════════════════════════════
+# Utilities
+# ═══════════════════════════════════════════════════════════════════════════
 
 # Security audit
 audit:
@@ -381,10 +267,6 @@ audit:
         cargo audit; \
     fi
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Utilities
-# ═══════════════════════════════════════════════════════════════════════════
-
 # Show current version
 version:
     @echo -e "{{BLUE}}📋 Current version:{{NC}}"
@@ -394,26 +276,6 @@ version:
 clean:
     @echo -e "{{BLUE}}🧹 Cleaning build artifacts...{{NC}}"
     cargo clean
-
-# Install all development tools
-install-tools:
-    @echo -e "{{BLUE}}🔧 Installing development tools...{{NC}}"
-    @echo -e "{{YELLOW}}Installing essential Rust development tools...{{NC}}"
-    cargo install just cargo-llvm-cov cargo-watch cargo-audit
-    @echo -e "{{GREEN}}✅ All development tools installed!{{NC}}"
-
-# Development status check
-dev-status:
-    @echo -e "{{BLUE}}📊 Development Status Check{{NC}}"
-    @echo -e "{{YELLOW}}Git status:{{NC}}"
-    git status --short
-    @echo -e "{{YELLOW}}Current version:{{NC}}"
-    just version
-    @echo -e "{{YELLOW}}Last commit:{{NC}}"
-    git log -1 --oneline
-    @echo -e "{{YELLOW}}Branch:{{NC}}"
-    git branch --show-current
-    @echo -e "{{GREEN}}✅ Status check complete{{NC}}"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Binary Deployment

@@ -1,6 +1,6 @@
 [package]
 name = "tree"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 rust-version = "1.77"
 description = "A fast, modern directory tree printer with intelligent ignore patterns and .gitignore integration"
