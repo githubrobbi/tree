@@ -29,10 +29,11 @@ default:
     @echo "  just coverage     - Coverage analysis"
     @echo ""
     @echo -e "{{GREEN}}Two-Phase Professional Workflow:{{NC}}"
-    @echo "  just phase1-test     - Phase 1: Coverage + Tests + Lint (Prod & Tests)"
+    @echo "  just phase1-test     - Phase 1: Coverage + Tests + Lint (Comprehensive)"
+    @echo "  just phase1-test-fast - Phase 1: Coverage + Tests + Lint (Fast-Fail)"
     @echo "  just phase2-ship     - Phase 2: Build/Commit/Push/Deploy"
-    @echo "  just dev-workflow    - Complete two-phase workflow"
-    @echo "  just dev-workflow-fast - Fast-fail workflow (stops at first error)"
+    @echo "  just dev-workflow    - Complete two-phase workflow (comprehensive)"
+    @echo "  just dev-workflow-fast - Fast-fail workflow (basic validation only)"
     @echo ""
     @echo -e "{{GREEN}}Performance & Analysis:{{NC}}"
     @echo "  just bench        - Run benchmarks"
@@ -150,6 +151,54 @@ phase1-test:
     @echo -e "{{GREEN}}✅ PHASE 1 COMPLETE: All tests passed, code ready for commit!{{NC}}"
     @echo -e "{{BLUE}}💡 Next: Run 'just phase2-ship' when ready to build/commit/push{{NC}}"
 
+# PHASE 1: Code & Extensive Testing (FAST-FAIL VERSION)
+phase1-test-fast:
+    @echo -e "{{BLUE}}🧪 PHASE 1: Code & Extensive Testing (FAST-FAIL){{NC}}"
+    @echo -e "{{YELLOW}}Running MOST extensive tests - STOPPING at FIRST failure...{{NC}}"
+    @echo "========================================================"
+    @echo ""
+
+    # Step 1: Auto-formatting
+    @echo -e "{{BLUE}}Step 1: Auto-formatting code...{{NC}}"
+    cargo fmt --all
+
+    # Step 2: Run all tests with coverage data collection (FAST-FAIL)
+    @echo -e "{{BLUE}}Step 2: Running all tests with coverage data collection (FAST-FAIL)...{{NC}}"
+    @if command -v cargo-llvm-cov >/dev/null 2>&1; then \
+        cargo llvm-cov test --workspace --all-features --all-targets --no-report; \
+        echo -e "{{GREEN}}✅ All tests passed, coverage data collected{{NC}}"; \
+    else \
+        echo -e "{{YELLOW}}Installing cargo-llvm-cov...{{NC}}"; \
+        cargo install cargo-llvm-cov; \
+        cargo llvm-cov test --workspace --all-features --all-targets --no-report; \
+        echo -e "{{GREEN}}✅ All tests passed, coverage data collected{{NC}}"; \
+    fi
+
+    # Step 3: Generate coverage report
+    @echo -e "{{BLUE}}Step 3: Generating coverage report...{{NC}}"
+    cargo llvm-cov report --html
+    @echo -e "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
+
+    # Step 4: Documentation tests (FAST-FAIL)
+    @echo -e "{{BLUE}}Step 4: Documentation tests validation (FAST-FAIL)...{{NC}}"
+    cargo test --workspace --doc --all-features
+
+    # Step 5: Ultra-strict production linting (FAST-FAIL)
+    @echo -e "{{BLUE}}Step 5: Ultra-strict production code linting (FAST-FAIL)...{{NC}}"
+    just lint-prod
+
+    # Step 6: Pragmatic test linting (FAST-FAIL)
+    @echo -e "{{BLUE}}Step 6: Pragmatic test code linting (FAST-FAIL)...{{NC}}"
+    just lint-tests
+
+    # Step 7: Format validation (final check) (FAST-FAIL)
+    @echo -e "{{BLUE}}Step 7: Final format validation (FAST-FAIL)...{{NC}}"
+    cargo fmt --all -- --check
+
+    @echo ""
+    @echo -e "{{GREEN}}✅ PHASE 1 FAST-FAIL COMPLETE: All extensive tests passed, code ready for commit!{{NC}}"
+    @echo -e "{{BLUE}}💡 Next: Run 'just phase2-ship' when ready to build/commit/push{{NC}}"
+
 # PHASE 2: Version/Build/Deploy (Professional Grade)
 phase2-ship:
     @echo -e "{{BLUE}}🚀 PHASE 2: Version/Build/Deploy (Post-Testing){{NC}}"
@@ -239,9 +288,9 @@ go:
     @echo "========================================================"
     @echo ""
 
-    # PHASE 1: Fast-fail testing and validation
-    @echo -e "{{BLUE}}🧪 PHASE 1: Fast-Fail Testing & Validation{{NC}}"
-    just dev-workflow-fast
+    # PHASE 1: Comprehensive fast-fail testing and validation
+    @echo -e "{{BLUE}}🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation{{NC}}"
+    just phase1-test-fast
 
     @echo ""
     @echo -e "{{GREEN}}✅ PHASE 1 COMPLETE - All validation passed!{{NC}}"
