@@ -1,5 +1,9 @@
 /target
 
+# IDE files
+.idea/
+
 # Coverage reports
 lcov.info
 *.profraw
+coverage/
