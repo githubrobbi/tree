@@ -276,16 +276,6 @@ clean:
     @echo -e "{{BLUE}}🧹 Cleaning build artifacts...{{NC}}"
     cargo clean
 
-# Test version extraction for commit message
-test-version:
-    @echo -e "{{BLUE}}🧪 Testing version extraction for commit message...{{NC}}"
-    @echo -e "{{YELLOW}}Current Cargo.toml version line:{{NC}}"
-    @grep '^version' Cargo.toml | head -1
-    @echo -e "{{YELLOW}}Extracted version:{{NC}}"
-    @grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'
-    @echo -e "{{YELLOW}}Generated commit message:{{NC}}"
-    @echo "chore: release v`grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'` - comprehensive testing complete [auto-commit]"
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Binary Deployment
 # ═══════════════════════════════════════════════════════════════════════════
