@@ -16,7 +16,10 @@ use walkdir;
 
 /// Function to check if a directory or file should be ignored based on provided patterns
 fn should_ignore(entry: &DirEntry, ignore_patterns: &[String]) -> bool {
-    entry.file_name().to_str().is_some_and(|file_name| ignore_patterns.iter().any(|pattern| pattern == file_name))
+    entry
+        .file_name()
+        .to_str()
+        .is_some_and(|file_name| ignore_patterns.iter().any(|pattern| pattern == file_name))
 }
 
 /// Read ignore patterns from `.tree_ignore` file
@@ -92,10 +95,17 @@ old_do_not_use
 backup
 ";
 
-    fs::write(&ignore_file_path, default_content)
-        .with_context(|| format!("Failed to create ignore file: {}", ignore_file_path.display()))?;
+    fs::write(&ignore_file_path, default_content).with_context(|| {
+        format!(
+            "Failed to create ignore file: {}",
+            ignore_file_path.display()
+        )
+    })?;
 
-    println!("Created default .tree_ignore file at: {}", ignore_file_path.display());
+    println!(
+        "Created default .tree_ignore file at: {}",
+        ignore_file_path.display()
+    );
     println!("You can edit this file to customize ignore patterns.");
 
     Ok(())
@@ -127,7 +137,7 @@ fn print_directory_tree_recursive_short<W: Write>(
     entries.sort_by(|a, b| {
         let a_is_dir = a.path().is_dir();
         let b_is_dir = b.path().is_dir();
-        
+
         match (a_is_dir, b_is_dir) {
             (true, false) => std::cmp::Ordering::Less,
             (false, true) => std::cmp::Ordering::Greater,
@@ -154,21 +164,21 @@ fn print_directory_tree_recursive_short<W: Write>(
         // If it's a directory, recurse into it
         if entry_path.is_dir() {
             let new_prefix = format!("{prefix}{next_prefix}");
-            print_directory_tree_recursive_short(
-                &entry_path,
-                &new_prefix,
-                handle,
-                ignored_paths,
-            )?;
+            print_directory_tree_recursive_short(&entry_path, &new_prefix, handle, ignored_paths)?;
         }
     }
 
     Ok(())
 }
 
-
-
 /// Function to print the directory tree.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The path cannot be accessed
+/// - I/O operations fail during tree generation
+/// - The ignore file cannot be created or read
 pub fn print_directory_tree<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
     let stdout = io::stdout();
@@ -219,6 +229,118 @@ pub fn print_directory_tree<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(())
 }
 
+/// Print directory tree to a writer (public API function)
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The path cannot be accessed
+/// - I/O operations fail during tree generation
+/// - The ignore file cannot be created or read
+pub fn print_directory_tree_to_writer<W: Write>(path: &Path, writer: &mut W) -> Result<()> {
+    writeln!(writer, "{}", path.display()).context("Failed to write to output")?;
+
+    // Read or create ignore patterns
+    let ignore_patterns = read_ignore_patterns(path)?;
+
+    // If no ignore file exists, create a default one
+    let ignore_file_path = path.join(".tree_ignore");
+    if !ignore_file_path.exists() {
+        create_default_ignore_file(path)?;
+    }
+
+    // Clone ignore_patterns for use in closure
+    let ignore_patterns_for_filter = ignore_patterns.clone();
+
+    // Collect all entries while respecting ignore rules
+    let ignore_walker = WalkBuilder::new(path)
+        .git_ignore(true) // Respect .gitignore
+        .hidden(false) // Skip hidden files
+        .filter_entry(move |entry| !should_ignore(entry, &ignore_patterns_for_filter)) // Custom filter logic using file patterns
+        .build();
+
+    let mut all_entries: Vec<_> = ignore_walker
+        .filter_map(std::result::Result::ok)
+        .filter(|entry| entry.path() != path) // Exclude the root directory itself
+        .collect();
+
+    // Sort entries: directories first, then files, both alphabetically
+    all_entries.sort_by(|a, b| {
+        let a_is_dir = a.path().is_dir();
+        let b_is_dir = b.path().is_dir();
+
+        match (a_is_dir, b_is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.path().cmp(b.path()),
+        }
+    });
+
+    let ignored_paths: Vec<PathBuf> = all_entries
+        .iter()
+        .filter(|entry| should_ignore(entry, &ignore_patterns))
+        .map(|entry| entry.path().to_path_buf())
+        .collect();
+
+    print_directory_tree_recursive_short(path, "", writer, &ignored_paths)
+}
+
+/// Clear ignore files and return count (public API function)
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The path cannot be accessed
+/// - I/O operations fail during directory traversal
+/// - File removal operations fail
+pub fn clear_ignore_files_count(path: &Path) -> Result<u64> {
+    let mut count = 0u64;
+    let mut directories_scanned = 0u64;
+
+    // Walk through all directories recursively and find .tree_ignore files
+    for entry in walkdir::WalkDir::new(path).follow_links(false)
+    // Don't follow symbolic links to avoid infinite loops
+    {
+        match entry {
+            Ok(entry) => {
+                if entry.file_type().is_dir() {
+                    directories_scanned += 1;
+                }
+
+                if entry.file_type().is_file() && entry.file_name() == ".tree_ignore" {
+                    match fs::remove_file(entry.path()) {
+                        Ok(()) => {
+                            count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg =
+                                format!("Failed to remove {}: {e}", entry.path().display());
+                            eprintln!("Warning: {error_msg}");
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                let error_msg = format!("Error accessing path: {e}");
+                eprintln!("Warning: {error_msg}");
+            }
+        }
+    }
+
+    // Print summary
+    println!("Clear operation completed:");
+    println!("  Directories scanned: {directories_scanned}");
+    println!("  .tree_ignore files found and removed: {count}");
+
+    if count == 0 {
+        println!("\nNo .tree_ignore files found to remove.");
+    } else {
+        println!("\nSuccessfully cleaned up {count} .tree_ignore file(s).");
+    }
+
+    Ok(count)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,7 +364,8 @@ mod tests {
         fs::create_dir(base_path.join("docs")).expect("Failed to create docs dir");
         fs::write(base_path.join("docs/README.md"), "# Docs").expect("Failed to write README.md");
 
-        fs::write(base_path.join("Cargo.toml"), "[package]\nname = \"test\"").expect("Failed to write Cargo.toml");
+        fs::write(base_path.join("Cargo.toml"), "[package]\nname = \"test\"")
+            .expect("Failed to write Cargo.toml");
 
         temp_dir
     }
@@ -258,11 +381,9 @@ mod tests {
 
         let patterns = vec!["target".to_string(), "node_modules".to_string()];
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                if entry.file_name().to_str() == Some("target") {
-                    assert!(should_ignore(&entry, &patterns));
-                }
+        for entry in walker.flatten() {
+            if entry.file_name().to_str() == Some("target") {
+                assert!(should_ignore(&entry, &patterns));
             }
         }
     }
@@ -277,10 +398,8 @@ mod tests {
 
         let patterns: Vec<String> = vec![];
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                assert!(!should_ignore(&entry, &patterns));
-            }
+        for entry in walker.flatten() {
+            assert!(!should_ignore(&entry, &patterns));
         }
     }
 
@@ -406,8 +525,7 @@ build
         print_directory_tree(base_path).expect("Should print tree");
 
         // Verify the file wasn't overwritten
-        let content = fs::read_to_string(base_path.join(".tree_ignore"))
-            .expect("Should read file");
+        let content = fs::read_to_string(base_path.join(".tree_ignore")).expect("Should read file");
         assert_eq!(content, custom_ignore);
     }
 
@@ -423,11 +541,9 @@ build
         // We'll test this indirectly through the walker
         let walker = WalkBuilder::new(base_path).build();
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                // Test that the function handles all cases
-                let _result = should_ignore(&entry, &patterns);
-            }
+        for entry in walker.flatten() {
+            // Test that the function handles all cases
+            let _result = should_ignore(&entry, &patterns);
         }
     }
 
@@ -530,7 +646,8 @@ build
 
         // Verify sorting: directories first (a_dir < z_dir), then files (a_file < z_file)
         if let (Some(a_dir), Some(z_dir), Some(a_file), Some(z_file)) =
-            (a_dir_pos, z_dir_pos, a_file_pos, z_file_pos) {
+            (a_dir_pos, z_dir_pos, a_file_pos, z_file_pos)
+        {
             assert!(a_dir < z_dir, "Directories should be sorted alphabetically");
             assert!(z_dir < a_file, "Directories should come before files");
             assert!(a_file < z_file, "Files should be sorted alphabetically");
@@ -597,7 +714,8 @@ build
 
         // Create a mix of files and directories
         fs::create_dir(base_path.join("subdir")).expect("Failed to create subdir");
-        fs::write(base_path.join("subdir/nested_file.txt"), "content").expect("Failed to write nested file");
+        fs::write(base_path.join("subdir/nested_file.txt"), "content")
+            .expect("Failed to write nested file");
         fs::write(base_path.join("root_file.txt"), "content").expect("Failed to write root file");
 
         let mut output = Cursor::new(Vec::new());
@@ -632,8 +750,8 @@ build
         print_directory_tree(base_path).expect("Should print tree with custom patterns");
 
         // Verify the ignore file still exists and wasn't overwritten
-        let content = fs::read_to_string(base_path.join(".tree_ignore"))
-            .expect("Should read ignore file");
+        let content =
+            fs::read_to_string(base_path.join(".tree_ignore")).expect("Should read ignore file");
         assert_eq!(content, ignore_content);
     }
 
@@ -644,8 +762,8 @@ build
 
         create_default_ignore_file(base_path).expect("Should create default file");
 
-        let content = fs::read_to_string(base_path.join(".tree_ignore"))
-            .expect("Should read created file");
+        let content =
+            fs::read_to_string(base_path.join(".tree_ignore")).expect("Should read created file");
 
         // Verify specific content is present
         assert!(content.contains("# Tree ignore patterns configuration file"));
@@ -687,7 +805,8 @@ build
         fs::write(base_path.join("target/debug"), "debug info").expect("Failed to write debug");
 
         // Create a .gitignore file
-        fs::write(base_path.join(".gitignore"), "target/\n*.log").expect("Failed to write .gitignore");
+        fs::write(base_path.join(".gitignore"), "target/\n*.log")
+            .expect("Failed to write .gitignore");
 
         // This should test the integration with gitignore functionality
         print_directory_tree(base_path).expect("Should print tree with gitignore");
@@ -708,7 +827,8 @@ build
         let mut output = Cursor::new(Vec::new());
         let ignored_paths = vec![];
 
-        let result = print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
+        let result =
+            print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
         assert!(result.is_ok());
 
         let output_str = String::from_utf8(output.into_inner()).expect("Should be valid UTF-8");
@@ -729,7 +849,8 @@ build
         // Test with the base path itself in the ignored list (should trigger early return)
         let ignored_paths = vec![base_path.to_path_buf()];
 
-        let result = print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
+        let result =
+            print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
         assert!(result.is_ok());
 
         // Should produce no output since the path itself is ignored
@@ -743,14 +864,20 @@ build
         let base_path = temp_dir.path();
 
         // Create a nested directory structure to test recursion
-        fs::create_dir_all(base_path.join("level1/level2/level3")).expect("Failed to create nested dirs");
-        fs::write(base_path.join("level1/level2/level3/deep_file.txt"), "content").expect("Failed to write deep file");
+        fs::create_dir_all(base_path.join("level1/level2/level3"))
+            .expect("Failed to create nested dirs");
+        fs::write(
+            base_path.join("level1/level2/level3/deep_file.txt"),
+            "content",
+        )
+        .expect("Failed to write deep file");
 
         let mut output = Cursor::new(Vec::new());
         let ignored_paths = vec![];
 
         // This should exercise the recursive call path (line 169)
-        let result = print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
+        let result =
+            print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
         assert!(result.is_ok());
 
         let output_str = String::from_utf8(output.into_inner()).expect("Should be valid UTF-8");
@@ -770,15 +897,18 @@ build
         // Create multiple subdirectories
         fs::create_dir(base_path.join("keep_dir")).expect("Failed to create keep_dir");
         fs::create_dir(base_path.join("ignore_dir")).expect("Failed to create ignore_dir");
-        fs::write(base_path.join("keep_dir/keep_file.txt"), "content").expect("Failed to write keep file");
-        fs::write(base_path.join("ignore_dir/ignore_file.txt"), "content").expect("Failed to write ignore file");
+        fs::write(base_path.join("keep_dir/keep_file.txt"), "content")
+            .expect("Failed to write keep file");
+        fs::write(base_path.join("ignore_dir/ignore_file.txt"), "content")
+            .expect("Failed to write ignore file");
 
         let mut output = Cursor::new(Vec::new());
 
         // Ignore only one of the directories
         let ignored_paths = vec![base_path.join("ignore_dir")];
 
-        let result = print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
+        let result =
+            print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths);
         assert!(result.is_ok());
 
         let output_str = String::from_utf8(output.into_inner()).expect("Should be valid UTF-8");
@@ -799,15 +929,13 @@ build
         let walker = WalkBuilder::new(base_path).build();
         let patterns = vec!["target".to_string(), "node_modules".to_string()];
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                if entry.file_name().to_str() == Some("target") {
-                    // This should trigger the true branch in should_ignore
-                    assert!(should_ignore(&entry, &patterns));
-                } else if entry.file_name().to_str() == Some("src") {
-                    // This should trigger the false branch in should_ignore
-                    assert!(!should_ignore(&entry, &patterns));
-                }
+        for entry in walker.flatten() {
+            if entry.file_name().to_str() == Some("target") {
+                // This should trigger the true branch in should_ignore
+                assert!(should_ignore(&entry, &patterns));
+            } else if entry.file_name().to_str() == Some("src") {
+                // This should trigger the false branch in should_ignore
+                assert!(!should_ignore(&entry, &patterns));
             }
         }
     }
@@ -821,11 +949,9 @@ build
         let patterns: Vec<String> = vec![];
 
         // Test with empty patterns - should never ignore anything
-        for entry in walker {
-            if let Ok(entry) = entry {
-                // This should always return false with empty patterns
-                assert!(!should_ignore(&entry, &patterns));
-            }
+        for entry in walker.flatten() {
+            // This should always return false with empty patterns
+            assert!(!should_ignore(&entry, &patterns));
         }
     }
 
@@ -857,7 +983,8 @@ build
 
         // This should exercise the sorting assertion logic
         if let (Some(a_dir), Some(z_dir), Some(a_file), Some(z_file)) =
-            (a_dir_pos, z_dir_pos, a_file_pos, z_file_pos) {
+            (a_dir_pos, z_dir_pos, a_file_pos, z_file_pos)
+        {
             // These assertions should cover the uncovered lines in the sorting test
             assert!(a_dir < z_dir, "Directories should be sorted alphabetically");
             assert!(z_dir < a_file, "Directories should come before files");
@@ -915,31 +1042,29 @@ build
         let mut found_docs = false;
         let mut found_other = false;
 
-        for entry in walker {
-            if let Ok(entry) = entry {
-                if let Some(file_name) = entry.file_name().to_str() {
-                    match file_name {
-                        "target" => {
-                            assert!(should_ignore(&entry, &patterns));
-                            found_target = true;
-                        }
-                        "src" => {
-                            assert!(should_ignore(&entry, &patterns));
-                            found_src = true;
-                        }
-                        "docs" => {
-                            assert!(should_ignore(&entry, &patterns));
-                            found_docs = true;
-                        }
-                        "Cargo.toml" => {
+        for entry in walker.flatten() {
+            if let Some(file_name) = entry.file_name().to_str() {
+                match file_name {
+                    "target" => {
+                        assert!(should_ignore(&entry, &patterns));
+                        found_target = true;
+                    }
+                    "src" => {
+                        assert!(should_ignore(&entry, &patterns));
+                        found_src = true;
+                    }
+                    "docs" => {
+                        assert!(should_ignore(&entry, &patterns));
+                        found_docs = true;
+                    }
+                    "Cargo.toml" => {
+                        assert!(!should_ignore(&entry, &patterns));
+                        found_other = true;
+                    }
+                    _ => {
+                        // Test other files that shouldn't be ignored
+                        if !patterns.contains(&file_name.to_string()) {
                             assert!(!should_ignore(&entry, &patterns));
-                            found_other = true;
-                        }
-                        _ => {
-                            // Test other files that shouldn't be ignored
-                            if !patterns.contains(&file_name.to_string()) {
-                                assert!(!should_ignore(&entry, &patterns));
-                            }
                         }
                     }
                 }
@@ -956,10 +1081,12 @@ build
         let base_path = temp_dir.path();
 
         // Create a comprehensive directory structure to test all code paths
-        fs::create_dir_all(base_path.join("subdir1/subdir2")).expect("Failed to create nested dirs");
+        fs::create_dir_all(base_path.join("subdir1/subdir2"))
+            .expect("Failed to create nested dirs");
         fs::write(base_path.join("file1.txt"), "content1").expect("Failed to write file1");
         fs::write(base_path.join("subdir1/file2.txt"), "content2").expect("Failed to write file2");
-        fs::write(base_path.join("subdir1/subdir2/file3.txt"), "content3").expect("Failed to write file3");
+        fs::write(base_path.join("subdir1/subdir2/file3.txt"), "content3")
+            .expect("Failed to write file3");
 
         // Test without existing .tree_ignore file (should create default)
         let result = print_directory_tree(base_path);
@@ -970,7 +1097,8 @@ build
 
         // Test with existing .tree_ignore file (should not overwrite)
         let custom_content = "custom_pattern\nanother_pattern";
-        fs::write(base_path.join(".tree_ignore"), custom_content).expect("Failed to write custom ignore");
+        fs::write(base_path.join(".tree_ignore"), custom_content)
+            .expect("Failed to write custom ignore");
 
         let result = print_directory_tree(base_path);
         assert!(result.is_ok());
@@ -979,101 +1107,4 @@ build
         let content = fs::read_to_string(base_path.join(".tree_ignore")).expect("Should read file");
         assert_eq!(content, custom_content);
     }
-}
-
-/// Print directory tree to a writer (public API function)
-pub fn print_directory_tree_to_writer<W: Write>(path: &Path, writer: &mut W) -> Result<()> {
-    writeln!(writer, "{}", path.display()).context("Failed to write to output")?;
-
-    // Read or create ignore patterns
-    let ignore_patterns = read_ignore_patterns(path)?;
-
-    // If no ignore file exists, create a default one
-    let ignore_file_path = path.join(".tree_ignore");
-    if !ignore_file_path.exists() {
-        create_default_ignore_file(path)?;
-    }
-
-    // Clone ignore_patterns for use in closure
-    let ignore_patterns_for_filter = ignore_patterns.clone();
-
-    // Collect all entries while respecting ignore rules
-    let ignore_walker = WalkBuilder::new(path)
-        .git_ignore(true) // Respect .gitignore
-        .hidden(false) // Skip hidden files
-        .filter_entry(move |entry| !should_ignore(entry, &ignore_patterns_for_filter)) // Custom filter logic using file patterns
-        .build();
-
-    let mut all_entries: Vec<_> = ignore_walker
-        .filter_map(std::result::Result::ok)
-        .filter(|entry| entry.path() != path) // Exclude the root directory itself
-        .collect();
-
-    // Sort entries: directories first, then files, both alphabetically
-    all_entries.sort_by(|a, b| {
-        let a_is_dir = a.path().is_dir();
-        let b_is_dir = b.path().is_dir();
-
-        match (a_is_dir, b_is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.path().cmp(b.path()),
-        }
-    });
-
-    let ignored_paths: Vec<PathBuf> = all_entries
-        .iter()
-        .filter(|entry| should_ignore(entry, &ignore_patterns))
-        .map(|entry| entry.path().to_path_buf())
-        .collect();
-
-    print_directory_tree_recursive_short(path, "", writer, &ignored_paths)
-}
-
-/// Clear ignore files and return count (public API function)
-pub fn clear_ignore_files_count(path: &Path) -> Result<u64> {
-    let mut count = 0u64;
-    let mut directories_scanned = 0u64;
-
-    // Walk through all directories recursively and find .tree_ignore files
-    for entry in walkdir::WalkDir::new(path)
-        .follow_links(false)  // Don't follow symbolic links to avoid infinite loops
-    {
-        match entry {
-            Ok(entry) => {
-                if entry.file_type().is_dir() {
-                    directories_scanned += 1;
-                }
-
-                if entry.file_type().is_file() && entry.file_name() == ".tree_ignore" {
-                    match fs::remove_file(entry.path()) {
-                        Ok(()) => {
-                            count += 1;
-                        }
-                        Err(e) => {
-                            let error_msg = format!("Failed to remove {}: {e}", entry.path().display());
-                            eprintln!("Warning: {error_msg}");
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                let error_msg = format!("Error accessing path: {e}");
-                eprintln!("Warning: {error_msg}");
-            }
-        }
-    }
-
-    // Print summary
-    println!("Clear operation completed:");
-    println!("  Directories scanned: {directories_scanned}");
-    println!("  .tree_ignore files found and removed: {count}");
-
-    if count == 0 {
-        println!("\nNo .tree_ignore files found to remove.");
-    } else {
-        println!("\nSuccessfully cleaned up {count} .tree_ignore file(s).");
-    }
-
-    Ok(count)
 }

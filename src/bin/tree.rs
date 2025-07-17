@@ -6,9 +6,9 @@
 //! A command-line interface for the tree library that prints directory trees
 //! with configurable ignore patterns.
 
-use std::path::PathBuf;
-use clap::Parser;
 use anyhow::Result;
+use clap::Parser;
+use std::path::PathBuf;
 
 /// Tree CLI tool for printing directory structures
 #[derive(Parser, Debug)]
@@ -27,13 +27,13 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    
+
     if cli.clear {
         let removed = tree::clear(&cli.path)?;
         println!("Removed {removed} .tree_ignore file(s)");
     } else {
         tree::print(&cli.path, &mut std::io::stdout())?;
     }
-    
+
     Ok(())
 }

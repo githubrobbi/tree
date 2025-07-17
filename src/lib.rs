@@ -55,15 +55,15 @@ pub enum TreeError {
     /// Path does not exist
     #[error("Path '{0}' does not exist")]
     PathMissing(String),
-    
+
     /// Path exists but is not a directory
     #[error("Path '{0}' is not a directory")]
     NotADirectory(String),
-    
+
     /// I/O error occurred during operation
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    
+
     /// Other error occurred
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -108,13 +108,12 @@ pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeE
     if !root.exists() {
         return Err(TreeError::PathMissing(root.display().to_string()));
     }
-    
+
     if !root.is_dir() {
         return Err(TreeError::NotADirectory(root.display().to_string()));
     }
-    
-    tree_printer::print_directory_tree_to_writer(root, writer)
-        .map_err(TreeError::Other)
+
+    tree_printer::print_directory_tree_to_writer(root, writer).map_err(TreeError::Other)
 }
 
 /// Clear all `.tree_ignore` files from the specified directory tree
@@ -153,11 +152,10 @@ pub fn clear(root: &Path) -> Result<u64, TreeError> {
     if !root.exists() {
         return Err(TreeError::PathMissing(root.display().to_string()));
     }
-    
+
     if !root.is_dir() {
         return Err(TreeError::NotADirectory(root.display().to_string()));
     }
-    
-    tree_printer::clear_ignore_files_count(root)
-        .map_err(TreeError::Other)
+
+    tree_printer::clear_ignore_files_count(root).map_err(TreeError::Other)
 }
