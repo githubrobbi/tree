@@ -796,4 +796,194 @@ build
         assert!(!output_str.contains("ignore_dir"));
         assert!(!output_str.contains("ignore_file.txt"));
     }
+
+    #[test]
+    fn test_should_ignore_with_matching_pattern() {
+        let temp_dir = create_test_directory();
+        let base_path = temp_dir.path();
+
+        // Create a walker to get actual DirEntry objects
+        let walker = WalkBuilder::new(base_path).build();
+        let patterns = vec!["target".to_string(), "node_modules".to_string()];
+
+        for entry in walker {
+            if let Ok(entry) = entry {
+                if entry.file_name().to_str() == Some("target") {
+                    // This should trigger the true branch in should_ignore
+                    assert!(should_ignore(&entry, &patterns));
+                } else if entry.file_name().to_str() == Some("src") {
+                    // This should trigger the false branch in should_ignore
+                    assert!(!should_ignore(&entry, &patterns));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_should_ignore_with_empty_patterns_comprehensive() {
+        let temp_dir = create_test_directory();
+        let base_path = temp_dir.path();
+
+        let walker = WalkBuilder::new(base_path).build();
+        let patterns: Vec<String> = vec![];
+
+        // Test with empty patterns - should never ignore anything
+        for entry in walker {
+            if let Ok(entry) = entry {
+                // This should always return false with empty patterns
+                assert!(!should_ignore(&entry, &patterns));
+            }
+        }
+    }
+
+    #[test]
+    fn test_print_directory_tree_recursive_short_sorting_edge_case() {
+        let temp_dir = TempDir::new().expect("Failed to create temp directory");
+        let base_path = temp_dir.path();
+
+        // Create files and directories with specific names to test sorting edge cases
+        fs::create_dir(base_path.join("a_dir")).expect("Failed to create a_dir");
+        fs::create_dir(base_path.join("z_dir")).expect("Failed to create z_dir");
+        fs::write(base_path.join("a_file.txt"), "content").expect("Failed to write a_file");
+        fs::write(base_path.join("z_file.txt"), "content").expect("Failed to write z_file");
+
+        let mut output = Cursor::new(Vec::new());
+        let ignored_paths = vec![];
+
+        print_directory_tree_recursive_short(base_path, "", &mut output, &ignored_paths)
+            .expect("Should print tree with sorting");
+
+        let output_str = String::from_utf8(output.into_inner()).expect("Should be valid UTF-8");
+        let lines: Vec<&str> = output_str.lines().collect();
+
+        // Find positions of each item to verify sorting
+        let a_dir_pos = lines.iter().position(|line| line.contains("a_dir"));
+        let z_dir_pos = lines.iter().position(|line| line.contains("z_dir"));
+        let a_file_pos = lines.iter().position(|line| line.contains("a_file.txt"));
+        let z_file_pos = lines.iter().position(|line| line.contains("z_file.txt"));
+
+        // This should exercise the sorting assertion logic
+        if let (Some(a_dir), Some(z_dir), Some(a_file), Some(z_file)) =
+            (a_dir_pos, z_dir_pos, a_file_pos, z_file_pos) {
+            // These assertions should cover the uncovered lines in the sorting test
+            assert!(a_dir < z_dir, "Directories should be sorted alphabetically");
+            assert!(z_dir < a_file, "Directories should come before files");
+            assert!(a_file < z_file, "Files should be sorted alphabetically");
+        }
+    }
+
+    #[test]
+    fn test_read_ignore_patterns_with_file_read_success() {
+        let temp_dir = TempDir::new().expect("Failed to create temp directory");
+        let base_path = temp_dir.path();
+
+        // Create a .tree_ignore file with specific content to test successful read
+        let ignore_content = "target\nnode_modules\nbuild";
+        fs::write(base_path.join(".tree_ignore"), ignore_content)
+            .expect("Failed to write ignore file");
+
+        // Test successful read path
+        let patterns = read_ignore_patterns(base_path).expect("Should read patterns successfully");
+        assert_eq!(patterns.len(), 3);
+        assert!(patterns.contains(&"target".to_string()));
+        assert!(patterns.contains(&"node_modules".to_string()));
+        assert!(patterns.contains(&"build".to_string()));
+    }
+
+    #[test]
+    fn test_create_default_ignore_file_success_path() {
+        let temp_dir = TempDir::new().expect("Failed to create temp directory");
+        let base_path = temp_dir.path();
+
+        // Test the successful creation path
+        let result = create_default_ignore_file(base_path);
+        assert!(result.is_ok());
+
+        // Verify file was created and has expected content
+        let ignore_file_path = base_path.join(".tree_ignore");
+        assert!(ignore_file_path.exists());
+
+        let content = fs::read_to_string(&ignore_file_path).expect("Should read created file");
+        assert!(content.contains("target"));
+        assert!(content.contains("node_modules"));
+        assert!(content.contains("# Tree ignore patterns configuration file"));
+    }
+
+    #[test]
+    fn test_should_ignore_comprehensive_pattern_matching() {
+        let temp_dir = create_test_directory();
+        let base_path = temp_dir.path();
+
+        let walker = WalkBuilder::new(base_path).build();
+        let patterns = vec!["target".to_string(), "src".to_string(), "docs".to_string()];
+
+        let mut found_target = false;
+        let mut found_src = false;
+        let mut found_docs = false;
+        let mut found_other = false;
+
+        for entry in walker {
+            if let Ok(entry) = entry {
+                if let Some(file_name) = entry.file_name().to_str() {
+                    match file_name {
+                        "target" => {
+                            assert!(should_ignore(&entry, &patterns));
+                            found_target = true;
+                        }
+                        "src" => {
+                            assert!(should_ignore(&entry, &patterns));
+                            found_src = true;
+                        }
+                        "docs" => {
+                            assert!(should_ignore(&entry, &patterns));
+                            found_docs = true;
+                        }
+                        "Cargo.toml" => {
+                            assert!(!should_ignore(&entry, &patterns));
+                            found_other = true;
+                        }
+                        _ => {
+                            // Test other files that shouldn't be ignored
+                            if !patterns.contains(&file_name.to_string()) {
+                                assert!(!should_ignore(&entry, &patterns));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Ensure we actually tested the conditions we expected
+        assert!(found_target || found_src || found_docs || found_other);
+    }
+
+    #[test]
+    fn test_print_directory_tree_all_branches() {
+        let temp_dir = TempDir::new().expect("Failed to create temp directory");
+        let base_path = temp_dir.path();
+
+        // Create a comprehensive directory structure to test all code paths
+        fs::create_dir_all(base_path.join("subdir1/subdir2")).expect("Failed to create nested dirs");
+        fs::write(base_path.join("file1.txt"), "content1").expect("Failed to write file1");
+        fs::write(base_path.join("subdir1/file2.txt"), "content2").expect("Failed to write file2");
+        fs::write(base_path.join("subdir1/subdir2/file3.txt"), "content3").expect("Failed to write file3");
+
+        // Test without existing .tree_ignore file (should create default)
+        let result = print_directory_tree(base_path);
+        assert!(result.is_ok());
+
+        // Verify .tree_ignore was created
+        assert!(base_path.join(".tree_ignore").exists());
+
+        // Test with existing .tree_ignore file (should not overwrite)
+        let custom_content = "custom_pattern\nanother_pattern";
+        fs::write(base_path.join(".tree_ignore"), custom_content).expect("Failed to write custom ignore");
+
+        let result = print_directory_tree(base_path);
+        assert!(result.is_ok());
+
+        // Verify custom content is preserved
+        let content = fs::read_to_string(base_path.join(".tree_ignore")).expect("Should read file");
+        assert_eq!(content, custom_content);
+    }
 }
