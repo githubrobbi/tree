@@ -68,7 +68,6 @@
     clippy::cargo,
     clippy::pedantic
 )]
-#![allow(clippy::module_name_repetitions)]
 
 use std::path::Path;
 use thiserror::Error;

@@ -65,12 +65,9 @@ pub fn clear_ignore_files_count(root: &Path) -> Result<u64> {
             continue;
         };
 
-        if entry.file_type().is_some_and(|t| t.is_file())
-            && entry.file_name() == ".tree_ignore"
-        {
-            fs::remove_file(entry.path()).with_context(|| {
-                format!("removing {}", entry.path().display())
-            })?;
+        if entry.file_type().is_some_and(|t| t.is_file()) && entry.file_name() == ".tree_ignore" {
+            fs::remove_file(entry.path())
+                .with_context(|| format!("removing {}", entry.path().display()))?;
             removed += 1;
         }
     }
@@ -81,6 +78,8 @@ pub fn clear_ignore_files_count(root: &Path) -> Result<u64> {
 /* Helpers – ignore files                                                     */
 /* -------------------------------------------------------------------------- */
 
+/// Default content for the `.tree_ignore` file with common patterns to ignore.
+/// This includes build artifacts, OS files, IDE files, and other commonly ignored items.
 const DEFAULT_IGNORE: &str = r"# Tree ignore patterns configuration file
 # Add one pattern per line (exact name matches only)
 
@@ -152,7 +151,7 @@ fn render_tree<W: Write>(
     writer: &mut W,
     ignore_set: &HashSet<String>,
 ) -> Result<()> {
-    let children = collect_children(dir, ignore_set)?;
+    let children = collect_children(dir, ignore_set);
 
     for (idx, child) in children.iter().enumerate() {
         let is_last = idx + 1 == children.len();
@@ -161,20 +160,18 @@ fn render_tree<W: Write>(
         let name = child.file_name().to_string_lossy();
 
         if path.is_dir() {
-            writeln!(writer, "{prefix}{connector}{name}/")
-                .context("failed to write directory")?;
+            writeln!(writer, "{prefix}{connector}{name}/").context("failed to write directory")?;
             let new_prefix = format!("{prefix}{}", if is_last { "    " } else { "│   " });
             render_tree(path, &new_prefix, writer, ignore_set)?;
         } else {
-            writeln!(writer, "{prefix}{connector}{name}")
-                .context("failed to write file")?;
+            writeln!(writer, "{prefix}{connector}{name}").context("failed to write file")?;
         }
     }
     Ok(())
 }
 
 /// Collect immediate children of `dir` honouring Git and `.tree_ignore`.
-fn collect_children(dir: &Path, ignore_set: &HashSet<String>) -> Result<Vec<DirEntry>> {
+fn collect_children(dir: &Path, ignore_set: &HashSet<String>) -> Vec<DirEntry> {
     let mut children: Vec<DirEntry> = WalkBuilder::new(dir)
         .max_depth(Some(1))
         .hidden(false)
@@ -182,7 +179,7 @@ fn collect_children(dir: &Path, ignore_set: &HashSet<String>) -> Result<Vec<DirE
         .git_exclude(true)
         .parents(true)
         .build()
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.depth() == 1) // skip the directory itself
         .filter(|e| !ignore_set.contains(&e.file_name().to_string_lossy().to_string()))
         .collect();
@@ -191,7 +188,7 @@ fn collect_children(dir: &Path, ignore_set: &HashSet<String>) -> Result<Vec<DirE
     children.sort_by(|a, b| match (a.path().is_dir(), b.path().is_dir()) {
         (true, false) => std::cmp::Ordering::Less,
         (false, true) => std::cmp::Ordering::Greater,
-        _ => a.file_name().cmp(&b.file_name()),
+        _ => a.file_name().cmp(b.file_name()),
     });
-    Ok(children)
+    children
 }

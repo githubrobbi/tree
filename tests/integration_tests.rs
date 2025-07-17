@@ -36,8 +36,7 @@
 //! Each test creates its own temporary directory to ensure complete isolation
 //! and prevent test interference. Cleanup is automatic via RAII patterns.
 
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::doc_markdown)]
+#![allow(clippy::unwrap_used)] // Tests should panic on failure
 
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -137,7 +136,7 @@ fn test_cli_file_instead_of_directory() {
         .stderr(predicate::str::contains("is not a directory"));
 }
 
-/// Test that .tree_ignore file is created when it doesn't exist
+/// Test that `.tree_ignore` file is created when it doesn't exist
 #[test]
 fn test_cli_creates_tree_ignore_file() {
     let temp_dir = TempDir::new().unwrap();
@@ -247,7 +246,11 @@ fn render_sorting_and_order() {
     fs::create_dir(root.join("z_dir")).unwrap();
     fs::create_dir(root.join("m_dir")).unwrap();
 
-    let output = Command::cargo_bin("tree").unwrap().arg(root).output().unwrap();
+    let output = Command::cargo_bin("tree")
+        .unwrap()
+        .arg(root)
+        .output()
+        .unwrap();
     assert!(output.status.success());
 
     let text = String::from_utf8(output.stdout).unwrap();

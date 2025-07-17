@@ -39,11 +39,6 @@
 //! providing much broader coverage than traditional unit tests while catching
 //! edge cases that might be missed in manual test case design.
 
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::single_match_else)]
-#![allow(clippy::cast_lossless)]
-#![allow(clippy::needless_continue)]
-
 use proptest::prelude::*;
 use std::fs;
 
@@ -79,10 +74,8 @@ proptest! {
         for file_name in &file_names {
             if !dir_names.contains(file_name) {
                 let file_path = base_path.join(file_name);
-                if fs::write(&file_path, "test content").is_err() {
-                    // Skip files that can't be created
-                    continue;
-                }
+                // Only create files that can be successfully written
+                let _ = fs::write(&file_path, "test content");
             }
         }
 
@@ -91,16 +84,12 @@ proptest! {
         let result = print(base_path, &mut output);
 
         // Should either succeed or return a proper error
-        match result {
-            Ok(()) => {
-                // If successful, output should contain the base path
-                let output_str = String::from_utf8(output).unwrap();
-                assert!(output_str.contains(&base_path.display().to_string()));
-            }
-            Err(_) => {
-                // Errors are acceptable, but panics are not
-            }
+        if matches!(result, Ok(())) {
+            // If successful, output should contain the base path
+            let output_str = String::from_utf8(output).unwrap();
+            assert!(output_str.contains(&base_path.display().to_string()));
         }
+        // Errors are acceptable, but panics are not
     }
 }
 
@@ -109,32 +98,28 @@ proptest! {
     fn clear_never_panics_and_is_consistent(
         ignore_file_count in 0u32..10
     ) {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = TempDir::new().expect("Failed to create temporary directory for test");
         let base_path = temp_dir.path();
 
         // Create nested directory structure
         for i in 0..ignore_file_count {
             let dir_path = base_path.join(format!("dir_{i}"));
-            fs::create_dir_all(&dir_path).unwrap();
-            fs::write(dir_path.join(".tree_ignore"), "test content").unwrap();
+            fs::create_dir_all(&dir_path).expect("Failed to create test directory");
+            fs::write(dir_path.join(".tree_ignore"), "test content").expect("Failed to write test ignore file");
         }
 
         // Clear should never panic
         let result = clear(base_path);
 
-        match result {
-            Ok(removed_count) => {
-                // Should have removed the expected number of files
-                assert_eq!(removed_count, ignore_file_count as u64);
+        if let Ok(removed_count) = result {
+            // Should have removed the expected number of files
+            assert_eq!(removed_count, u64::from(ignore_file_count));
 
-                // Running clear again should remove 0 files
-                let second_result = clear(base_path).unwrap();
-                assert_eq!(second_result, 0);
-            }
-            Err(_) => {
-                // Errors are acceptable, but panics are not
-            }
+            // Running clear again should remove 0 files
+            let second_result = clear(base_path).unwrap();
+            assert_eq!(second_result, 0);
         }
+        // Errors are acceptable, but panics are not
     }
 }
 
@@ -153,10 +138,9 @@ proptest! {
         }
 
         for file_name in &file_names {
-            if !dir_names.contains(file_name)
-                && fs::write(base_path.join(file_name), "content").is_err() {
-                // Skip files that can't be created
-                continue;
+            if !dir_names.contains(file_name) {
+                // Only create files that can be successfully written
+                let _ = fs::write(base_path.join(file_name), "content");
             }
         }
 
@@ -195,15 +179,11 @@ proptest! {
         // Clear should handle empty directory trees without panicking
         let result = clear(base_path);
 
-        match result {
-            Ok(count) => {
-                // Should remove 0 files from empty directories
-                assert_eq!(count, 0);
-            }
-            Err(_) => {
-                // Errors are acceptable for edge cases
-            }
+        if let Ok(count) = result {
+            // Should remove 0 files from empty directories
+            assert_eq!(count, 0);
         }
+        // Errors are acceptable for edge cases
     }
 }
 
@@ -259,12 +239,19 @@ proptest! {
         let tmp = TempDir::new().unwrap();
         let root = tmp.path();
 
-        // Create random structure
+        // Create random structure (handle duplicates gracefully)
         for d in &dirs {
-            fs::create_dir(root.join(d)).unwrap();
+            let dir_path = root.join(d);
+            if !dir_path.exists() {
+                fs::create_dir(&dir_path).unwrap();
+            }
         }
         for f in &files {
-            fs::write(root.join(f), "data").unwrap();
+            let file_path = root.join(f);
+            // Only create files that don't conflict with directories
+            if !dirs.contains(f) && !file_path.exists() {
+                fs::write(&file_path, "data").unwrap();
+            }
         }
 
         // 1) Print should succeed and be deterministic

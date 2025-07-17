@@ -6,3 +6,4 @@
 # everyone who runs the test benefits from these saved cases.
 cc 3b1587ea12877e1f4ca27ddaf0bbe965cd0e3a2330ab4338e75cc07e9075d056 # shrinks to dir_names = [], file_names = ["."]
 cc b22e69ef1fb6278954ad1a2cec8ef83f830ddadfb7896e4caaa4dd5597e23369 # shrinks to dir_names = ["A"], file_names = ["."]
+cc 6ef71712a79474fd337e72fc3452e56bc8ba359d931d2c8b0efc53a37a7ffd8b # shrinks to dirs = ["_", "_"], files = []

@@ -17,13 +17,11 @@
 //! These tests are designed to achieve maximum code coverage by exercising
 //! code paths that are difficult to trigger in normal usage scenarios.
 
-#![allow(clippy::unwrap_used)]
-
 use std::fs;
 use tempfile::TempDir;
 use tree::{clear, print};
 
-/// Test clearing when no .tree_ignore files exist (covers early return path)
+/// Test clearing when no `.tree_ignore` files exist (covers early return path)
 #[test]
 fn test_clear_no_ignore_files_exist() {
     let temp_dir = TempDir::new().unwrap();
@@ -40,7 +38,7 @@ fn test_clear_no_ignore_files_exist() {
     assert_eq!(result, 0);
 }
 
-/// Test print function when no .tree_ignore file exists initially
+/// Test print function when no `.tree_ignore` file exists initially
 #[test]
 fn test_print_creates_ignore_file_when_missing() {
     let temp_dir = TempDir::new().unwrap();
@@ -170,14 +168,14 @@ fn test_complex_ignore_patterns() {
     fs::write(temp_path.join("temp.tmp"), "// temp").unwrap();
 
     // Create ignore file with various patterns
-    let ignore_content = r#"# Comments should be ignored
+    let ignore_content = r"# Comments should be ignored
 target_file
 *.tmp
 
 # Empty lines should be ignored too
 
 src/lib.rs
-"#;
+";
     fs::write(temp_path.join(".tree_ignore"), ignore_content).unwrap();
 
     let mut output = Vec::new();
@@ -186,8 +184,11 @@ src/lib.rs
     let output_str = String::from_utf8(output).unwrap();
 
     // Debug: print the actual output to understand what's happening
-    println!("Actual output:\n{}", output_str);
-    println!("Ignore file content:\n{}", fs::read_to_string(temp_path.join(".tree_ignore")).unwrap());
+    println!("Actual output:\n{output_str}");
+    println!(
+        "Ignore file content:\n{}",
+        fs::read_to_string(temp_path.join(".tree_ignore")).unwrap()
+    );
 
     // Should contain main.rs but not lib.rs (ignored)
     assert!(output_str.contains("main.rs"));
@@ -237,7 +238,7 @@ fn gitignore_patterns_are_honoured() {
     assert!(tree.contains("normal.log"));
     // Note: gitignore behavior may vary depending on git repository state
     // This test primarily ensures the WalkBuilder configuration doesn't panic
-    assert!(tree.len() > 0); // Basic functionality test
+    assert!(!tree.is_empty()); // Basic functionality test
 }
 
 /// Validate that printing an empty directory still produces the root path
@@ -280,7 +281,7 @@ fn clear_reports_zero_when_removal_fails() {
     assert!(removed <= 1); // Should be 0 or 1 depending on system behavior
 }
 
-/// Test that read_ignore_patterns returns empty Vec when no .tree_ignore exists
+/// Test that `read_ignore_patterns` returns empty Vec when no `.tree_ignore` exists
 /// This covers the early return path (line 132).
 #[test]
 fn read_ignore_patterns_no_file_exists() {
@@ -299,7 +300,7 @@ fn read_ignore_patterns_no_file_exists() {
     assert!(output.contains("test.txt"));
 }
 
-/// Test recursive directory rendering to cover line 167 (recursive render_tree call)
+/// Test recursive directory rendering to cover line 167 (recursive `render_tree` call)
 #[test]
 fn recursive_directory_rendering() {
     let tmp = TempDir::new().unwrap();
@@ -342,5 +343,8 @@ fn directory_file_sorting_order() {
     let file_pos = output.find("a_file.txt").unwrap();
 
     // Directory should come before file despite alphabetical order
-    assert!(dir_pos < file_pos, "Directory should come before file in output");
+    assert!(
+        dir_pos < file_pos,
+        "Directory should come before file in output"
+    );
 }
