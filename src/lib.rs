@@ -218,13 +218,17 @@ pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeE
 ///
 /// ```rust
 /// use std::path::Path;
-/// use tree;
+/// use tree::{print_with_options, TreeError};
 ///
-/// // Show only directories
-/// tree::print_with_options(Path::new("."), &mut std::io::stdout(), false)?;
+/// fn main() -> Result<(), TreeError> {
+///     // Show only directories
+///     print_with_options(Path::new("."), &mut std::io::stdout(), false)?;
 ///
-/// // Show files and directories (same as tree::print)
-/// tree::print_with_options(Path::new("."), &mut std::io::stdout(), true)?;
+///     // Show files and directories (same as tree::print)
+///     print_with_options(Path::new("."), &mut std::io::stdout(), true)?;
+///
+///     Ok(())
+/// }
 /// ```
 ///
 /// # Errors
