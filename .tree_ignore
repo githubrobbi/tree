@@ -1,0 +1,45 @@
+# Tree ignore patterns configuration file
+# This file controls which directories and files are ignored when printing the tree
+# Add one pattern per line (exact name matches only)
+# Lines starting with # are comments and will be ignored
+#
+# You can edit this file to customize which items are ignored
+# Use 'tree --clear' to remove this configuration file
+
+# Build and compilation outputs
+target
+build
+dist
+out
+
+# Dependencies and package managers
+node_modules
+vendor
+.pnpm-store
+
+# Version control
+.git
+.svn
+.hg
+
+# IDE and editor files
+.vscode
+.idea
+.idea.old
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary and cache directories
+tmp
+temp
+cache
+.cache
+
+# Legacy or backup directories
+old_do_not_use
+backup

@@ -1,0 +1,15 @@
+[package]
+name = "tree"
+version = "0.1.0"
+edition = "2021"
+description = "A simple CLI tool to print directory trees with configurable ignore patterns"
+license = "MPL-2.0"
+repository = "https://github.com/user/tree"
+keywords = ["cli", "tree", "directory", "filesystem", "tool"]
+categories = ["command-line-utilities", "filesystem"]
+
+[dependencies]
+anyhow = "1.0.98"
+ignore = "0.4.23"
+clap = { version = "4.5.41", features = ["derive"] }
+walkdir = "2.0"
