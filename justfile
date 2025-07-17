@@ -15,6 +15,7 @@ default:
     @echo "=================================================="
     @echo ""
     @echo -e "{{GREEN}}Development Commands:{{NC}}"
+    @echo "  just go           - 🚀 Complete two-phase fast-fail workflow"
     @echo "  just dev          - Modern watch mode with testing"
     @echo "  just test         - Run all tests"
     @echo "  just check        - Quick code validation"
@@ -28,9 +29,10 @@ default:
     @echo "  just coverage     - Coverage analysis"
     @echo ""
     @echo -e "{{GREEN}}Two-Phase Professional Workflow:{{NC}}"
-    @echo "  just phase1-test  - Phase 1: Coverage + Tests + Lint (Prod & Tests)"
-    @echo "  just phase2-ship  - Phase 2: Build/Commit/Push/Deploy"
-    @echo "  just dev-workflow - Complete two-phase workflow"
+    @echo "  just phase1-test     - Phase 1: Coverage + Tests + Lint (Prod & Tests)"
+    @echo "  just phase2-ship     - Phase 2: Build/Commit/Push/Deploy"
+    @echo "  just dev-workflow    - Complete two-phase workflow"
+    @echo "  just dev-workflow-fast - Fast-fail workflow (stops at first error)"
     @echo ""
     @echo -e "{{GREEN}}Performance & Analysis:{{NC}}"
     @echo "  just bench        - Run benchmarks"
@@ -198,6 +200,62 @@ dev-workflow:
     @echo -e "{{YELLOW}}Phase 2: Build/Commit/Push/Deploy...{{NC}}"
     just phase2-ship
     @echo -e "{{GREEN}}🎉 Complete development workflow finished!{{NC}}"
+
+# Fast-fail development workflow (stops at first failure)
+dev-workflow-fast:
+    @echo -e "{{BLUE}}⚡ Fast-Fail Development Workflow{{NC}}"
+    @echo -e "{{YELLOW}}Stopping at FIRST failure for rapid feedback...{{NC}}"
+    @echo "========================================================"
+    @echo ""
+
+    # Step 1: Quick format check (fast fail)
+    @echo -e "{{BLUE}}Step 1: Quick format check...{{NC}}"
+    cargo fmt --all -- --check
+
+    # Step 2: Quick compile check (fast fail)
+    @echo -e "{{BLUE}}Step 2: Quick compile check...{{NC}}"
+    cargo check --workspace --all-targets --all-features
+
+    # Step 3: Run tests (fast fail on first test failure)
+    @echo -e "{{BLUE}}Step 3: Running tests (fast fail)...{{NC}}"
+    cargo test --workspace --all-features --all-targets
+
+    # Step 4: Production linting (fast fail)
+    @echo -e "{{BLUE}}Step 4: Production linting (fast fail)...{{NC}}"
+    just lint-prod
+
+    # Step 5: Test linting (fast fail)
+    @echo -e "{{BLUE}}Step 5: Test linting (fast fail)...{{NC}}"
+    just lint-tests
+
+    @echo ""
+    @echo -e "{{GREEN}}✅ Fast-fail checks passed! Ready for full workflow.{{NC}}"
+    @echo -e "{{BLUE}}💡 Run 'just dev-workflow' for complete coverage analysis{{NC}}"
+
+# Complete two-phase fast-fail workflow - perfect for rapid development
+go:
+    @echo -e "{{BLUE}}🚀 Complete Two-Phase Fast-Fail Workflow{{NC}}"
+    @echo -e "{{YELLOW}}Failing fast at ANY error in either phase...{{NC}}"
+    @echo "========================================================"
+    @echo ""
+
+    # PHASE 1: Fast-fail testing and validation
+    @echo -e "{{BLUE}}🧪 PHASE 1: Fast-Fail Testing & Validation{{NC}}"
+    just dev-workflow-fast
+
+    @echo ""
+    @echo -e "{{GREEN}}✅ PHASE 1 COMPLETE - All validation passed!{{NC}}"
+    @echo -e "{{BLUE}}🚀 Starting PHASE 2: Build/Deploy...{{NC}}"
+    @echo ""
+
+    # PHASE 2: Fast-fail build and deployment
+    @echo -e "{{BLUE}}📦 PHASE 2: Fast-Fail Build & Deploy{{NC}}"
+    just phase2-ship
+
+    @echo ""
+    @echo -e "{{GREEN}}🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!{{NC}}"
+    @echo -e "{{GREEN}}✅ Phase 1: Testing & Validation{{NC}}"
+    @echo -e "{{GREEN}}✅ Phase 2: Build/Commit/Push/Deploy{{NC}}"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Rust Master Linting Commands
