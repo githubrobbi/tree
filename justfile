@@ -315,8 +315,8 @@ dev-status:
 # Copy binary to deployment location (dynamically discovers target directory)
 copy-binary profile:
     @echo -e "{{BLUE}}📦 Copying {{profile}} binary to deployment location...{{NC}}"
-    @if [ -d "/Users/rnio/bin/rust" ]; then \
-        SOURCE_DIR="/Users/rnio/bin/rust/{{profile}}"; \
+    @if [ -d "$HOME/bin/rust" ]; then \
+        SOURCE_DIR="$HOME/bin/rust/{{profile}}"; \
     else \
         SOURCE_DIR="target/{{profile}}"; \
     fi; \
@@ -333,7 +333,7 @@ copy-binary profile:
                 lib*|*.rlib|*.d|*.so|*.dylib|*.dll) \
                     continue ;; \
                 *) \
-                    DEST_PATH="/Users/rnio/bin/$BINARY_NAME"; \
+                    DEST_PATH="$HOME/bin/$BINARY_NAME"; \
                     echo -e "{{BLUE}}  → Source: $BINARY_PATH{{NC}}"; \
                     echo -e "{{BLUE}}  → Destination: $DEST_PATH{{NC}}"; \
                     if cp "$BINARY_PATH" "$DEST_PATH" && chmod +x "$DEST_PATH"; then \
