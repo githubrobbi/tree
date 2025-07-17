@@ -20,6 +20,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use ignore::{DirEntry, WalkBuilder};
+use walkdir;
 
 /// Function to check if a directory or file should be ignored based on provided patterns
 fn should_ignore(entry: &DirEntry, ignore_patterns: &[String]) -> bool {
@@ -986,4 +987,101 @@ build
         let content = fs::read_to_string(base_path.join(".tree_ignore")).expect("Should read file");
         assert_eq!(content, custom_content);
     }
+}
+
+/// Print directory tree to a writer (public API function)
+pub fn print_directory_tree_to_writer<W: Write>(path: &Path, writer: &mut W) -> Result<()> {
+    writeln!(writer, "{}", path.display()).context("Failed to write to output")?;
+
+    // Read or create ignore patterns
+    let ignore_patterns = read_ignore_patterns(path)?;
+
+    // If no ignore file exists, create a default one
+    let ignore_file_path = path.join(".tree_ignore");
+    if !ignore_file_path.exists() {
+        create_default_ignore_file(path)?;
+    }
+
+    // Clone ignore_patterns for use in closure
+    let ignore_patterns_for_filter = ignore_patterns.clone();
+
+    // Collect all entries while respecting ignore rules
+    let ignore_walker = WalkBuilder::new(path)
+        .git_ignore(true) // Respect .gitignore
+        .hidden(false) // Skip hidden files
+        .filter_entry(move |entry| !should_ignore(entry, &ignore_patterns_for_filter)) // Custom filter logic using file patterns
+        .build();
+
+    let mut all_entries: Vec<_> = ignore_walker
+        .filter_map(std::result::Result::ok)
+        .filter(|entry| entry.path() != path) // Exclude the root directory itself
+        .collect();
+
+    // Sort entries: directories first, then files, both alphabetically
+    all_entries.sort_by(|a, b| {
+        let a_is_dir = a.path().is_dir();
+        let b_is_dir = b.path().is_dir();
+
+        match (a_is_dir, b_is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.path().cmp(b.path()),
+        }
+    });
+
+    let ignored_paths: Vec<PathBuf> = all_entries
+        .iter()
+        .filter(|entry| should_ignore(entry, &ignore_patterns))
+        .map(|entry| entry.path().to_path_buf())
+        .collect();
+
+    print_directory_tree_recursive_short(path, "", writer, &ignored_paths)
+}
+
+/// Clear ignore files and return count (public API function)
+pub fn clear_ignore_files_count(path: &Path) -> Result<u64> {
+    let mut count = 0u64;
+    let mut directories_scanned = 0u64;
+
+    // Walk through all directories recursively and find .tree_ignore files
+    for entry in walkdir::WalkDir::new(path)
+        .follow_links(false)  // Don't follow symbolic links to avoid infinite loops
+    {
+        match entry {
+            Ok(entry) => {
+                if entry.file_type().is_dir() {
+                    directories_scanned += 1;
+                }
+
+                if entry.file_type().is_file() && entry.file_name() == ".tree_ignore" {
+                    match fs::remove_file(entry.path()) {
+                        Ok(()) => {
+                            count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("Failed to remove {}: {e}", entry.path().display());
+                            eprintln!("Warning: {error_msg}");
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                let error_msg = format!("Error accessing path: {e}");
+                eprintln!("Warning: {error_msg}");
+            }
+        }
+    }
+
+    // Print summary
+    println!("Clear operation completed:");
+    println!("  Directories scanned: {directories_scanned}");
+    println!("  .tree_ignore files found and removed: {count}");
+
+    if count == 0 {
+        println!("\nNo .tree_ignore files found to remove.");
+    } else {
+        println!("\nSuccessfully cleaned up {count} .tree_ignore file(s).");
+    }
+
+    Ok(count)
 }

@@ -26,6 +26,8 @@ The binary will be available at `target/release/tree`.
 
 ## Usage
 
+### Command Line Interface
+
 ```bash
 # Print tree for current directory
 tree
@@ -41,6 +43,32 @@ tree --clear /path/to/directory
 
 # Show help
 tree --help
+```
+
+### Library Usage
+
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+tree = "0.1.0"
+```
+
+Use in your Rust code:
+```rust
+use std::path::Path;
+use tree::{print, clear};
+
+fn main() -> Result<(), tree::TreeError> {
+    // Print directory tree to stdout
+    let mut stdout = std::io::stdout();
+    print(Path::new("."), &mut stdout)?;
+
+    // Clear all .tree_ignore files
+    let removed_count = clear(Path::new("."))?;
+    println!("Removed {} .tree_ignore files", removed_count);
+
+    Ok(())
+}
 ```
 
 ## Example Output
