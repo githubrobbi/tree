@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "A simple CLI tool to print directory trees with configurable ignore patterns"
 license = "MPL-2.0"
-repository = "https://github.com/user/tree"
+repository = "https://github.com/githubrobbi/tree"
 keywords = ["cli", "tree", "directory", "filesystem", "tool"]
 categories = ["command-line-utilities", "filesystem"]
 
