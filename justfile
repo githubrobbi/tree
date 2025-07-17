@@ -204,8 +204,7 @@ phase2-ship:
 
     # Step 5: Create auto-generated commit
     @echo -e "{{BLUE}}Step 5: Creating auto-generated commit...{{NC}}"
-    @NEW_VERSION=`grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'`; \
-    git commit -m "chore: release v$$NEW_VERSION - comprehensive testing complete [auto-commit]"
+    git commit -m "chore: release v`grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'` - comprehensive testing complete [auto-commit]"
 
     # Step 6: Sync with remote and push
     @echo -e "{{BLUE}}Step 6: Syncing with remote and pushing...{{NC}}"
@@ -276,6 +275,16 @@ version:
 clean:
     @echo -e "{{BLUE}}🧹 Cleaning build artifacts...{{NC}}"
     cargo clean
+
+# Test version extraction for commit message
+test-version:
+    @echo -e "{{BLUE}}🧪 Testing version extraction for commit message...{{NC}}"
+    @echo -e "{{YELLOW}}Current Cargo.toml version line:{{NC}}"
+    @grep '^version' Cargo.toml | head -1
+    @echo -e "{{YELLOW}}Extracted version:{{NC}}"
+    @grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'
+    @echo -e "{{YELLOW}}Generated commit message:{{NC}}"
+    @echo "chore: release v`grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'` - comprehensive testing complete [auto-commit]"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Binary Deployment
