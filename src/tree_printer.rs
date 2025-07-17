@@ -1,13 +1,5 @@
-// =============================================================================
-// src/tree_printer.rs
-// =============================================================================
-//
-// SPDX-License-Identifier: MPL-2.0 OR LicenseRef-TTAPI-Commercial
-// This Source Code Form is subject to the terms of the Mozilla Public
-// License, v. 2.0. If a copy of the MPL was not distributed with this
-// file, You can obtain one at https://mozilla.org/MPL/2.0/.
-//
-// Copyright (c) 2025 SKY, LLC.
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Robert Nio
 //
 // TTAPI - Tastytrade API High-Performance Options Trading Platform
 // Contact: skylegal@nios.net for licensing inquiries

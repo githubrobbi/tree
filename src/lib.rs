@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: MPL-2.0 OR LicenseRef-TTAPI-Commercial
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2025 Robert Nio
 
 //! Tree – directory tree printer
 //!
