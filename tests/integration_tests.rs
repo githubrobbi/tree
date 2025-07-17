@@ -180,3 +180,41 @@ fn test_cli_clear_short_flag() {
         .success()
         .stdout(predicate::str::contains("Removed 1 .tree_ignore file(s)"));
 }
+
+#[test]
+fn test_clear_with_no_ignore_files() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    // Create some regular files but no .tree_ignore files
+    fs::create_dir_all(temp_path.join("src")).unwrap();
+    fs::write(temp_path.join("src/main.rs"), "fn main() {}").unwrap();
+    fs::write(temp_path.join("Cargo.toml"), "[package]\nname = \"test\"").unwrap();
+
+    let mut cmd = Command::cargo_bin("tree").unwrap();
+    cmd.arg("--clear")
+        .arg(temp_path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Removed 0 .tree_ignore file(s)"));
+}
+
+#[test]
+fn test_print_with_no_existing_ignore_file() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    // Create a simple directory structure with no .tree_ignore file
+    fs::create_dir_all(temp_path.join("src")).unwrap();
+    fs::write(temp_path.join("src/lib.rs"), "// library code").unwrap();
+
+    let mut cmd = Command::cargo_bin("tree").unwrap();
+    cmd.arg(temp_path)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("src/"))
+        .stdout(predicate::str::contains("lib.rs"));
+
+    // Verify .tree_ignore was created
+    assert!(temp_path.join(".tree_ignore").exists());
+}
