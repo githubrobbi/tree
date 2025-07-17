@@ -3,6 +3,11 @@
 
 //! Property-based tests for the tree library
 
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::single_match_else)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::needless_continue)]
+
 use proptest::prelude::*;
 use std::fs;
 

@@ -20,7 +20,7 @@ struct Cli {
     #[arg(default_value = ".")]
     path: PathBuf,
 
-    /// Clear all .tree_ignore files created by previous runs
+    /// Clear all `.tree_ignore` files created by previous runs
     #[arg(long, short = 'c')]
     clear: bool,
 }

@@ -3,6 +3,9 @@
 
 //! Integration tests for the tree CLI tool
 
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::doc_markdown)]
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
