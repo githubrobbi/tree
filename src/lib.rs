@@ -195,7 +195,52 @@ pub enum TreeError {
 /// - Internal operations encounter unexpected errors ([`TreeError::Other`])
 pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeError> {
     validate_root(root)?;
-    tree_printer::print_directory_tree_to_writer(root, writer).map_err(TreeError::Other)
+    tree_printer::print_directory_tree_to_writer(root, writer, true).map_err(TreeError::Other)
+}
+
+/// Generate and print a directory tree with display options.
+///
+/// This function provides more control over what gets displayed in the tree output.
+/// It supports filtering between directories-only and full file/directory display.
+///
+/// # Arguments
+///
+/// * `root` - The root directory path to start tree generation from
+/// * `writer` - Output destination implementing [`std::io::Write`]
+/// * `show_files` - Whether to include files in the output (true) or directories only (false)
+///
+/// # Display Modes
+///
+/// * `show_files = true` - Shows both files and directories (default behavior)
+/// * `show_files = false` - Shows only directories, files are omitted
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::Path;
+/// use tree;
+///
+/// // Show only directories
+/// tree::print_with_options(Path::new("."), &mut std::io::stdout(), false)?;
+///
+/// // Show files and directories (same as tree::print)
+/// tree::print_with_options(Path::new("."), &mut std::io::stdout(), true)?;
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The root path does not exist ([`TreeError::PathMissing`])
+/// - The root path is not a directory ([`TreeError::NotADirectory`])
+/// - I/O operations fail during tree generation ([`TreeError::Io`])
+/// - Internal operations encounter unexpected errors ([`TreeError::Other`])
+pub fn print_with_options<W: std::io::Write>(
+    root: &Path,
+    writer: &mut W,
+    show_files: bool,
+) -> Result<(), TreeError> {
+    validate_root(root)?;
+    tree_printer::print_directory_tree_to_writer(root, writer, show_files).map_err(TreeError::Other)
 }
 
 /// Remove every `.tree_ignore` file below the specified root directory.

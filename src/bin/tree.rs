@@ -112,6 +112,21 @@ struct Cli {
     /// resetting ignore patterns. Reports the number of files removed.
     #[arg(long, short = 'c')]
     clear: bool,
+
+    /// Show directories only (exclude files).
+    ///
+    /// When enabled, only directories are displayed in the tree structure.
+    /// Files are completely omitted from the output, showing only the
+    /// directory hierarchy. Useful for getting an overview of project structure.
+    #[arg(long, short = 'd')]
+    directories_only: bool,
+
+    /// Show all files and directories (default behavior).
+    ///
+    /// This is the default mode that displays both files and directories.
+    /// Explicitly setting this flag overrides --directories-only if both are specified.
+    #[arg(long, short = 'a')]
+    all: bool,
 }
 
 /// Application entry point and main execution logic.
@@ -148,7 +163,8 @@ fn main() -> Result<()> {
         println!("Removed {removed} .tree_ignore file(s)");
     } else {
         // Print mode: Generate and display directory tree
-        tree::print(&cli.path, &mut std::io::stdout())?;
+        let show_files = !cli.directories_only || cli.all;
+        tree::print_with_options(&cli.path, &mut std::io::stdout(), show_files)?;
     }
 
     Ok(())

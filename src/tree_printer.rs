@@ -33,7 +33,11 @@ use std::{
 ///
 /// # Errors
 /// Returns an error when I/O fails at any point.
-pub fn print_directory_tree_to_writer<W: Write>(root: &Path, writer: &mut W) -> Result<()> {
+pub fn print_directory_tree_to_writer<W: Write>(
+    root: &Path,
+    writer: &mut W,
+    show_files: bool,
+) -> Result<()> {
     writeln!(writer, "{}", root.display()).context("failed to write root path")?;
 
     // Lazily create `.tree_ignore` if it is missing.
@@ -43,7 +47,7 @@ pub fn print_directory_tree_to_writer<W: Write>(root: &Path, writer: &mut W) -> 
 
     let ignore_set = HashSet::<String>::from_iter(read_ignore_patterns(root)?);
 
-    render_tree(root, "", writer, &ignore_set)?;
+    render_tree(root, "", writer, &ignore_set, show_files)?;
 
     Ok(())
 }
@@ -150,6 +154,7 @@ fn render_tree<W: Write>(
     prefix: &str,
     writer: &mut W,
     ignore_set: &HashSet<String>,
+    show_files: bool,
 ) -> Result<()> {
     let children = collect_children(dir, ignore_set);
 
@@ -162,8 +167,8 @@ fn render_tree<W: Write>(
         if path.is_dir() {
             writeln!(writer, "{prefix}{connector}{name}/").context("failed to write directory")?;
             let new_prefix = format!("{prefix}{}", if is_last { "    " } else { "│   " });
-            render_tree(path, &new_prefix, writer, ignore_set)?;
-        } else {
+            render_tree(path, &new_prefix, writer, ignore_set, show_files)?;
+        } else if show_files {
             writeln!(writer, "{prefix}{connector}{name}").context("failed to write file")?;
         }
     }
