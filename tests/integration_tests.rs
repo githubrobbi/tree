@@ -1,7 +1,40 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Robert Nio
 
-//! Integration tests for the tree CLI tool
+//! # Integration Tests for Tree CLI
+//!
+//! This module contains comprehensive integration tests for the tree CLI application,
+//! testing the complete end-to-end functionality including command-line argument
+//! parsing, file system operations, and output generation.
+//!
+//! ## Test Philosophy
+//!
+//! These tests focus on **black-box testing** of the CLI binary:
+//! - **Real filesystem operations** - Tests use actual temporary directories
+//! - **Complete command execution** - Tests invoke the actual binary
+//! - **Output validation** - Tests verify both stdout and stderr content
+//! - **Exit code verification** - Tests ensure proper success/failure signaling
+//! - **Cross-platform compatibility** - Tests work on Windows, macOS, and Linux
+//!
+//! ## Test Categories
+//!
+//! 1. **Basic functionality** - Core tree printing and clearing operations
+//! 2. **Error handling** - Invalid paths, permissions, edge cases
+//! 3. **Ignore patterns** - `.gitignore` and `.tree_ignore` integration
+//! 4. **Command-line interface** - Argument parsing and help output
+//! 5. **File system edge cases** - Empty directories, special characters, etc.
+//!
+//! ## Testing Tools
+//!
+//! - **`assert_cmd`** - For CLI testing with process spawning and output capture
+//! - **`predicates`** - For flexible output matching and validation
+//! - **`tempfile`** - For safe temporary directory creation and cleanup
+//! - **Standard assertions** - For precise value and behavior verification
+//!
+//! ## Test Isolation
+//!
+//! Each test creates its own temporary directory to ensure complete isolation
+//! and prevent test interference. Cleanup is automatic via RAII patterns.
 
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::doc_markdown)]
@@ -19,7 +52,7 @@ fn test_cli_help() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "A simple CLI tool to print directory trees",
+            "Tree is a modern directory tree printer",
         ));
 }
 

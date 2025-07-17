@@ -1,9 +1,40 @@
 // SPDX‑License‑Identifier: MIT
-//! *Internal* implementation of printing / housekeeping logic.
+// Copyright (c) 2025 Robert Nio
+
+//! Core tree printing and file management implementation.
 //!
-//! All user‑facing ergonomics live in `lib.rs`; this module is **not**
-//! re‑exported.  It produces no terminal output itself except via the `Write`
-//! handle supplied by the caller.
+//! This module contains the internal implementation details for directory tree
+//! generation and `.tree_ignore` file management. It is **not** part of the public
+//! API and should not be used directly by external code.
+//!
+//! ## Architecture Overview
+//!
+//! The module is organized into several key components:
+//!
+//! - **Public entry points** - [`print_directory_tree_to_writer`] and [`clear_ignore_files_count`]
+//! - **Ignore file management** - Creation, reading, and parsing of `.tree_ignore` files
+//! - **Tree rendering** - Unicode-based directory tree visualization
+//! - **Directory traversal** - Efficient walking with ignore pattern filtering
+//!
+//! ## Design Principles
+//!
+//! - **Streaming I/O** - All output is written directly to the provided `Write` sink
+//! - **Memory efficiency** - Directory traversal is lazy and doesn't load entire trees
+//! - **Error resilience** - Individual file failures don't stop the entire operation
+//! - **Unicode correctness** - Proper handling of non-UTF-8 filenames
+//! - **Cross-platform** - Works consistently across Windows, macOS, and Linux
+//!
+//! ## Integration with `ignore` Crate
+//!
+//! This module leverages the excellent `ignore` crate for `.gitignore` integration
+//! and efficient directory walking. The ignore patterns are combined with our
+//! custom `.tree_ignore` patterns for comprehensive filtering.
+//!
+//! ## Thread Safety
+//!
+//! All functions in this module are thread-safe and can be called concurrently
+//! from multiple threads, though individual `Write` sinks must be synchronized
+//! by the caller if shared across threads.
 
 use anyhow::{Context, Result};
 use ignore::WalkBuilder;
@@ -13,8 +44,44 @@ use std::{
     path::Path,
 };
 
-/// Produce a directory tree beginning at `root`, honouring ignore patterns,
-/// and write it to `writer`.
+/// Core implementation for directory tree printing.
+///
+/// This function performs the actual work of generating a directory tree
+/// visualization. It handles ignore file creation, pattern parsing, and
+/// recursive tree rendering with Unicode box-drawing characters.
+///
+/// ## Implementation Details
+///
+/// 1. **Root path output** - Writes the root directory path as the tree header
+/// 2. **Ignore file management** - Creates default `.tree_ignore` if missing
+/// 3. **Pattern compilation** - Reads and parses ignore patterns from files
+/// 4. **Tree rendering** - Recursively walks and renders the directory structure
+///
+/// ## Output Format
+///
+/// The generated tree uses Unicode box-drawing characters for clean visualization:
+/// - `├──` for intermediate entries
+/// - `└──` for final entries in a directory
+/// - `│   ` for vertical continuation lines
+/// - `/` suffix for directories
+///
+/// ## Performance Characteristics
+///
+/// - **O(n)** time complexity where n is the number of non-ignored entries
+/// - **O(d)** space complexity where d is the maximum directory depth
+/// - **Streaming output** - no intermediate buffering of the entire tree
+/// - **Lazy evaluation** - directories are processed only when needed
+///
+/// ## Integration with `ignore` Crate
+///
+/// This function leverages the `ignore` crate's `WalkBuilder` for efficient
+/// directory traversal with built-in `.gitignore` support. Custom `.tree_ignore`
+/// patterns are layered on top for additional filtering.
+///
+/// # Arguments
+///
+/// * `root` - The root directory to start tree generation from
+/// * `writer` - The output sink for the generated tree (stdout, file, buffer, etc.)
 ///
 /// # Errors
 ///
@@ -22,6 +89,7 @@ use std::{
 /// - The root path cannot be written to the output
 /// - I/O operations fail during tree generation
 /// - The ignore file cannot be created or read
+/// - Directory traversal encounters permission or filesystem errors
 pub fn print_directory_tree_to_writer<W: Write>(
     root: &Path,
     writer: &mut W,
@@ -40,16 +108,59 @@ pub fn print_directory_tree_to_writer<W: Write>(
     Ok(())
 }
 
-/// Remove every `.tree_ignore` file below `root`; returns the count.
+/// Core implementation for recursive `.tree_ignore` file removal.
 ///
-/// *No user‑visible output — caller decides what to log.*
+/// This function performs a depth-first traversal of the directory tree starting
+/// from `root` and removes all `.tree_ignore` files encountered. It's designed
+/// to be resilient to individual file failures while providing accurate counting.
+///
+/// ## Implementation Strategy
+///
+/// 1. **Recursive traversal** - Uses `ignore::WalkBuilder` for efficient walking
+/// 2. **Selective removal** - Only removes files named exactly `.tree_ignore`
+/// 3. **Error resilience** - Individual file failures are logged but don't stop processing
+/// 4. **Accurate counting** - Returns the exact number of successfully removed files
+/// 5. **No symbolic link following** - Avoids infinite loops and unintended deletions
+///
+/// ## Safety Guarantees
+///
+/// - **Name-based filtering** - Only files named `.tree_ignore` are considered
+/// - **File type checking** - Only regular files are removed (not directories or links)
+/// - **Atomic operations** - Each file removal is a separate filesystem operation
+/// - **Error isolation** - Failure to remove one file doesn't affect others
+///
+/// ## Performance Characteristics
+///
+/// - **O(n)** time complexity where n is the total number of filesystem entries
+/// - **O(1)** space complexity (constant memory usage regardless of tree size)
+/// - **Streaming processing** - no intermediate storage of file lists
+/// - **Early termination** - stops immediately on fatal traversal errors
+///
+/// ## Error Handling Philosophy
+///
+/// This function distinguishes between recoverable and fatal errors:
+/// - **Recoverable**: Individual file removal failures (logged to stderr)
+/// - **Fatal**: Directory traversal failures (returned as errors)
+///
+/// # Arguments
+///
+/// * `root` - The root directory to start the recursive removal from
+///
+/// # Returns
+///
+/// Returns the number of `.tree_ignore` files successfully removed as a `u64`.
+/// This count only includes files that were actually deleted, not files that
+/// couldn't be removed due to permissions or other issues.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - The root path cannot be accessed
-/// - File removal operations fail
-/// - Directory traversal encounters fatal errors
+/// - The root path cannot be accessed or doesn't exist
+/// - Directory traversal encounters fatal filesystem errors
+/// - The `WalkBuilder` fails to initialize or traverse directories
+///
+/// Individual file removal failures are logged to stderr but do not cause
+/// this function to return an error, allowing cleanup to continue.
 pub fn clear_ignore_files_count(root: &Path) -> Result<u64> {
     let mut removed = 0u64;
 

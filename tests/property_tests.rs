@@ -1,7 +1,43 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Robert Nio
 
-//! Property-based tests for the tree library
+//! # Property-Based Tests for Tree Library
+//!
+//! This module contains property-based tests using the `proptest` framework to
+//! verify that the tree library functions correctly across a wide range of
+//! randomly generated inputs and edge cases.
+//!
+//! ## Property-Based Testing Philosophy
+//!
+//! Unlike traditional unit tests that test specific cases, property-based tests
+//! verify **invariants** that should hold true for all valid inputs:
+//!
+//! - **Robustness** - Functions should never panic on valid inputs
+//! - **Determinism** - Same input should always produce same output
+//! - **Consistency** - Related operations should have consistent behavior
+//! - **Boundary conditions** - Edge cases should be handled gracefully
+//!
+//! ## Test Categories
+//!
+//! 1. **Robustness tests** - Verify functions don't panic on random inputs
+//! 2. **Determinism tests** - Ensure consistent output for identical inputs
+//! 3. **Consistency tests** - Verify related operations behave consistently
+//! 4. **Edge case tests** - Test boundary conditions and special cases
+//! 5. **Performance tests** - Ensure reasonable behavior under load
+//!
+//! ## Input Generation Strategy
+//!
+//! The tests use carefully crafted generators that produce:
+//! - **Valid directory structures** with realistic file/folder names
+//! - **Edge cases** like empty directories, deep nesting, special characters
+//! - **Ignore patterns** with various complexity levels
+//! - **Filesystem scenarios** that might occur in real usage
+//!
+//! ## Test Execution
+//!
+//! Each property test runs hundreds of iterations with different random inputs,
+//! providing much broader coverage than traditional unit tests while catching
+//! edge cases that might be missed in manual test case design.
 
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::single_match_else)]

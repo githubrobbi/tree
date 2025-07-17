@@ -3,11 +3,15 @@ name = "tree"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.77"
-description = "A simple CLI tool to print directory trees with configurable ignore patterns"
+description = "A fast, modern directory tree printer with intelligent ignore patterns and .gitignore integration"
 license = "MIT"
 repository = "https://github.com/githubrobbi/tree"
-keywords = ["cli", "tree", "directory", "filesystem", "tool"]
+keywords = ["cli", "tree", "directory", "filesystem", "gitignore"]
 categories = ["command-line-utilities", "filesystem"]
+authors = ["Robert Nio <robert_nio@intuit.com>"]
+readme = "README.md"
+homepage = "https://github.com/githubrobbi/tree"
+documentation = "https://docs.rs/tree"
 
 [[bin]]
 name = "tree"
