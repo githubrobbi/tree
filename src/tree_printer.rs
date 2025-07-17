@@ -38,11 +38,7 @@
 
 use anyhow::{Context, Result};
 use ignore::WalkBuilder;
-use std::{
-    fs,
-    io::Write,
-    path::Path,
-};
+use std::{fs, io::Write, path::Path};
 
 /// Core implementation for directory tree printing.
 ///
@@ -90,12 +86,8 @@ use std::{
 /// - I/O operations fail during tree generation
 /// - The ignore file cannot be created or read
 /// - Directory traversal encounters permission or filesystem errors
-pub fn print_directory_tree_to_writer<W: Write>(
-    root: &Path,
-    writer: &mut W,
-) -> Result<()> {
-    writeln!(writer, "{}", root.display())
-        .context("failed to write root path")?;
+pub fn print_directory_tree_to_writer<W: Write>(root: &Path, writer: &mut W) -> Result<()> {
+    writeln!(writer, "{}", root.display()).context("failed to write root path")?;
 
     // Lazily create a default ignore file if missing, *before* reading patterns.
     let ignore_path = root.join(".tree_ignore");
@@ -175,9 +167,7 @@ pub fn clear_ignore_files_count(root: &Path) -> Result<u64> {
             continue;
         };
 
-        if entry.file_type().is_some_and(|t| t.is_file())
-            && entry.file_name() == ".tree_ignore"
-        {
+        if entry.file_type().is_some_and(|t| t.is_file()) && entry.file_name() == ".tree_ignore" {
             fs::remove_file(entry.path())
                 .with_context(|| format!("removing {}", entry.path().display()))?;
             removed += 1;
@@ -244,8 +234,8 @@ fn read_ignore_patterns(dir: &Path) -> Result<Vec<String>> {
         return Ok(Vec::new());
     }
 
-    let content = fs::read_to_string(&path)
-        .with_context(|| format!("reading {}", path.display()))?;
+    let content =
+        fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
 
     let patterns = content
         .lines()
@@ -256,8 +246,6 @@ fn read_ignore_patterns(dir: &Path) -> Result<Vec<String>> {
 
     Ok(patterns)
 }
-
-
 
 /* -------------------------------------------------------------------------- */
 /* Rendering                                                                  */
@@ -297,7 +285,7 @@ fn render_tree<W: Write>(
             "{prefix}{connector}{}",
             entry.file_name().to_string_lossy()
         )
-            .with_context(|| "failed to write tree line")?;
+        .with_context(|| "failed to write tree line")?;
 
         if entry.path().is_dir() {
             let extension = if is_last { "    " } else { "│   " };

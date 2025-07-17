@@ -194,10 +194,7 @@ pub enum TreeError {
 /// - The root path is not a directory ([`TreeError::NotADirectory`])
 /// - I/O operations fail during tree generation ([`TreeError::Io`])
 /// - Internal operations encounter unexpected errors ([`TreeError::Other`])
-pub fn print<W: std::io::Write>(
-    root: &Path,
-    writer: &mut W,
-) -> Result<(), TreeError> {
+pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeError> {
     validate_root(root)?;
     tree_printer::print_directory_tree_to_writer(root, writer).map_err(TreeError::Other)
 }
