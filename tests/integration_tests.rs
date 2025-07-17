@@ -218,3 +218,45 @@ fn test_print_with_no_existing_ignore_file() {
     // Verify .tree_ignore was created
     assert!(temp_path.join(".tree_ignore").exists());
 }
+
+/// When the CLI prints a tree, every directory entry must end with `/`.
+#[test]
+fn directories_are_rendered_with_slash_suffix() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+
+    fs::create_dir(root.join("src")).unwrap();
+    fs::write(root.join("src/main.rs"), "fn main() {}").unwrap();
+
+    let mut cmd = Command::cargo_bin("tree").unwrap();
+    cmd.arg(root)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("src/")); // <- slash is important
+}
+
+/// Directories must come *before* files and both are alphabetically sorted.
+#[test]
+fn render_sorting_and_order() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+
+    // Intentionally shuffled creation order
+    fs::write(root.join("b_file.txt"), "").unwrap();
+    fs::write(root.join("a_file.txt"), "").unwrap();
+    fs::create_dir(root.join("z_dir")).unwrap();
+    fs::create_dir(root.join("m_dir")).unwrap();
+
+    let output = Command::cargo_bin("tree").unwrap().arg(root).output().unwrap();
+    assert!(output.status.success());
+
+    let text = String::from_utf8(output.stdout).unwrap();
+
+    // Positions must follow: directories (m_dir, z_dir) then files (a_file, b_file)
+    let m_pos = text.find("m_dir/").unwrap();
+    let z_pos = text.find("z_dir/").unwrap();
+    let a_pos = text.find("a_file.txt").unwrap();
+    let b_pos = text.find("b_file.txt").unwrap();
+
+    assert!(m_pos < z_pos && z_pos < a_pos && a_pos < b_pos);
+}

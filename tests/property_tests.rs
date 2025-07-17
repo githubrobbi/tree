@@ -237,3 +237,51 @@ proptest! {
         prop_assert!(result.is_ok() || result.is_err()); // Should not panic
     }
 }
+
+/// Arbitrary but valid directory names (shorter for faster testing).
+fn dir_name() -> impl Strategy<Value = String> {
+    "[a-zA-Z0-9_-]{1,8}"
+}
+
+/// Arbitrary file names with small extensions (shorter for faster testing).
+fn file_name_short() -> impl Strategy<Value = String> {
+    "[a-zA-Z0-9_-]{1,8}\\.[a-zA-Z]{1,4}"
+}
+
+proptest! {
+    /// The tree must be printable *and* fully clearable afterwards.
+    /// This test verifies that print and clear operations work together correctly.
+    #[test]
+    fn print_and_clear_are_inverse(
+        dirs in prop::collection::vec(dir_name(), 0..4),
+        files in prop::collection::vec(file_name_short(), 0..8),
+    ) {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+
+        // Create random structure
+        for d in &dirs {
+            fs::create_dir(root.join(d)).unwrap();
+        }
+        for f in &files {
+            fs::write(root.join(f), "data").unwrap();
+        }
+
+        // 1) Print should succeed and be deterministic
+        let mut buf1 = Vec::new();
+        print(root, &mut buf1).unwrap();
+
+        let mut buf2 = Vec::new();
+        print(root, &mut buf2).unwrap();
+
+        prop_assert_eq!(buf1, buf2); // determinism
+
+        // 2) After printing there is exactly one .tree_ignore file
+        prop_assert!(root.join(".tree_ignore").exists());
+
+        // 3) Clearing should delete that file and report `1`
+        let removed = clear(root).unwrap();
+        prop_assert_eq!(removed, 1);
+        prop_assert!(!root.join(".tree_ignore").exists());
+    }
+}
