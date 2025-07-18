@@ -28,6 +28,8 @@ default:
     @echo "{{GREEN}}⚙️  Environment Setup:{{NC}}"
     @echo "  just setup        - Smart setup (check & install missing tools)"
     @echo "  just setup-windows - Windows setup (no ANSI colors)"
+    @echo "  just setup-nocolor - Cross-platform setup (no ANSI colors)"
+    @echo "  just setup-simple  - Basic PowerShell-compatible setup"
     @echo ""
     @echo "{{GREEN}}📋 Individual Steps:{{NC}}"
     @echo "  just fmt          - Format code"
@@ -53,8 +55,11 @@ default:
     @echo "  just version      - Show current version"
     @echo "  just benchmark-both - Compare workflow performance"
     @echo ""
-    @echo "{{YELLOW}}💡 Windows users:{{NC}} If you see raw escape sequences instead of colors,"
-    @echo "   use 'just setup-windows' or set NO_COLOR=1"
+    @echo "{{YELLOW}}💡 Windows users:{{NC}} If you see raw escape sequences instead of colors:"
+    @echo "   • Use Git Bash terminal (recommended)"
+    @echo "   • Or run: set NO_COLOR=1 && just setup"
+    @echo "   • Or try: just setup-nocolor"
+    @echo "   • If shell errors occur: just setup-simple"
 
 # Common clippy flags - Rust master approach
 common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clippy::multiple_crate_versions -W clippy::panic -W clippy::todo -W clippy::unimplemented -D warnings"
@@ -413,19 +418,58 @@ setup:
 
 # Windows-specific setup with better error handling and no ANSI colors
 # Use this on Windows if you see raw escape sequences like \033[0;32m instead of colors
-# This sets NO_COLOR=1 to disable ANSI color codes
+#
+# WINDOWS USERS: If this command fails with "Could not find `cygpath` executable",
+# please use Git Bash instead of PowerShell/Command Prompt, or run:
+# 1. Install Git for Windows (includes Git Bash)
+# 2. Run this command from Git Bash terminal
+# 3. Or use: set NO_COLOR=1 && just setup
 setup-windows:
-    #!/usr/bin/env bash
-    export NO_COLOR=1
-    echo "🔧 Windows Development Environment Setup"
-    echo "Checking and installing only missing tools..."
-    echo ""
-    just setup-rust-tools
+    @echo "🔧 Windows Development Environment Setup"
+    @echo "Checking and installing only missing tools..."
+    @echo ""
+    @echo "🦀 Checking Rust development tools..."
+    just setup-core-tools
+    just setup-performance-tools
+    just setup-quality-tools
+    just setup-analysis-tools
+    just setup-rust-toolchain
     just setup-platform-tools
     just setup-git-config
-    echo ""
-    echo "✅ Development environment ready!"
-    echo "🚀 Run 'just go' to start developing"
+    @echo ""
+    @echo "✅ Development environment ready!"
+    @echo "🚀 Run 'just go' to start developing"
+
+# Cross-platform setup without colors (alternative for any platform)
+# This version works in PowerShell, Command Prompt, and Unix shells
+setup-nocolor:
+    @echo "🔧 Development Environment Setup (No Colors)"
+    @echo "Checking and installing only missing tools..."
+    @echo ""
+    @echo "🦀 Checking Rust development tools..."
+    just setup-core-tools
+    just setup-performance-tools
+    just setup-quality-tools
+    just setup-analysis-tools
+    just setup-rust-toolchain
+    just setup-platform-tools
+    just setup-git-config
+    @echo ""
+    @echo "✅ Development environment ready!"
+    @echo "🚀 Run 'just go' to start developing"
+
+# Simple PowerShell-compatible setup for Windows
+# Run this if other commands fail with shell errors
+setup-simple:
+    cargo install cargo-binstall --quiet || echo "cargo-binstall already installed or failed"
+    cargo install cargo-watch --quiet || echo "cargo-watch already installed or failed"
+    cargo install cargo-nextest --quiet || echo "cargo-nextest already installed or failed"
+    cargo install cargo-llvm-cov --quiet || echo "cargo-llvm-cov already installed or failed"
+    cargo install cargo-deny --quiet || echo "cargo-deny already installed or failed"
+    cargo install cargo-audit --quiet || echo "cargo-audit already installed or failed"
+    cargo install cargo-outdated --quiet || echo "cargo-outdated already installed or failed"
+    @echo "✅ Basic Rust tools installed!"
+    @echo "🚀 Run 'cargo build' to test your setup"
 
 # Smart Rust tools installation - blazing fast development & compilation tools
 setup-rust-tools:
