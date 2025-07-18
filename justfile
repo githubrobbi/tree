@@ -21,78 +21,56 @@ YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[1;33m
 RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;31m' }
 NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0m' }
 
-# Default recipe - show available commands with cross-platform colors
+# Default recipe - works on all platforms, guides users to correct setup
 default:
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "🌳 Tree - Modern Rust Development Workflow\n"; \
-    else \
-        printf "\033[0;34m🌳 Tree - Modern Rust Development Workflow\033[0m\n"; \
-    fi
-    @printf "==================================================\n"
-    @printf "\n"
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "🚀 Main Workflow:\n"; \
-    else \
-        printf "\033[0;32m🚀 Main Workflow:\033[0m\n"; \
-    fi
-    @printf "  just go           - Complete two-phase fast-fail workflow\n"
-    @printf "\n"
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "⚙️  Environment Setup:\n"; \
-    else \
-        printf "\033[0;32m⚙️  Environment Setup:\033[0m\n"; \
-    fi
-    @printf "  just setup        - Smart setup (Unix/Linux/macOS/Git Bash)\n"
-    @printf "  just setup-powershell - Windows PowerShell setup (run first!)\n"
-    @printf "  just setup-windows - Windows Git Bash setup\n"
-    @printf "  just setup-simple  - Command Prompt compatible\n"
-    @printf "  just setup-nocolor - Any terminal (no colors)\n"
-    @printf "\n"
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "📋 Individual Steps:\n"; \
-    else \
-        printf "\033[0;32m📋 Individual Steps:\033[0m\n"; \
-    fi
-    @printf "  just fmt          - Format code\n"
-    @printf "  just test         - Run all tests\n"
-    @printf "  just doc          - Run documentation tests\n"
-    @printf "  just coverage     - Generate coverage report\n"
-    @printf "  just lint-prod    - Ultra-strict production linting\n"
-    @printf "  just lint-tests   - Pragmatic test linting\n"
-    @printf "  just build        - Build release binary\n"
-    @printf "  just deploy       - Copy binary to ~/bin\n"
-    @printf "\n"
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "🔧 Development:\n"; \
-    else \
-        printf "\033[0;32m🔧 Development:\033[0m\n"; \
-    fi
-    @printf "  just dev          - Watch mode with testing\n"
-    @printf "  just check        - Quick validation\n"
-    @printf "  just clean        - Clean build artifacts\n"
-    @printf "\n"
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "📊 Analysis & Optimization:\n"; \
-    else \
-        printf "\033[0;32m📊 Analysis & Optimization:\033[0m\n"; \
-    fi
-    @printf "  just audit        - Comprehensive security audit\n"
-    @printf "  just deps-optimize - Find & remove unused dependencies\n"
-    @printf "  just debug-deep   - Advanced debugging (macros, miri)\n"
-    @printf "  just semver-check - Semantic versioning compliance\n"
-    @printf "  just bench        - Performance benchmarking\n"
-    @printf "  just version      - Show current version\n"
-    @printf "  just benchmark-both - Compare workflow performance\n"
-    @printf "\n"
-    @if [ "${NO_COLOR:-}" = "1" ]; then \
-        printf "💡 Windows users: Choose the right setup for your terminal:\n"; \
-    else \
-        printf "\033[1;33m💡 Windows users:\033[0m Choose the right setup for your terminal:\n"; \
-    fi
-    @printf "   • PowerShell (bare metal): .\\setup-windows.ps1 (run as Admin)\n"
-    @printf "   • Git Bash: just setup (colors work automatically!)\n"
-    @printf "   • Command Prompt: just setup-simple (no colors)\n"
-    @printf "   • Any terminal: NO_COLOR=1 just setup\n"
+    @echo "🌳 Tree - Modern Rust Development Workflow"
+    @echo "=================================================="
+    @echo ""
+    @echo "🚀 Main Workflow:"
+    @echo "  just go           - Complete two-phase fast-fail workflow"
+    @echo ""
+    @echo "⚙️  Environment Setup:"
+    @echo "  just setup        - Smart setup (Unix/Linux/macOS/Git Bash)"
+    @echo "  just setup-powershell - Windows PowerShell setup (run first!)"
+    @echo "  just setup-windows - Windows Git Bash setup"
+    @echo "  just setup-simple  - Command Prompt compatible"
+    @echo "  just setup-nocolor - Any terminal (no colors)"
+    @echo ""
+    @echo "📋 Individual Steps:"
+    @echo "  just fmt          - Format code"
+    @echo "  just test         - Run all tests"
+    @echo "  just doc          - Run documentation tests"
+    @echo "  just coverage     - Generate coverage report"
+    @echo "  just lint-prod    - Ultra-strict production linting"
+    @echo "  just lint-tests   - Pragmatic test linting"
+    @echo "  just build        - Build release binary"
+    @echo "  just deploy       - Copy binary to ~/bin"
+    @echo ""
+    @echo "🔧 Development:"
+    @echo "  just dev          - Watch mode with testing"
+    @echo "  just check        - Quick validation"
+    @echo "  just clean        - Clean build artifacts"
+    @echo ""
+    @echo "📊 Analysis & Optimization:"
+    @echo "  just audit        - Comprehensive security audit"
+    @echo "  just deps-optimize - Find & remove unused dependencies"
+    @echo "  just debug-deep   - Advanced debugging (macros, miri)"
+    @echo "  just semver-check - Semantic versioning compliance"
+    @echo "  just bench        - Performance benchmarking"
+    @echo "  just version      - Show current version"
+    @echo "  just benchmark-both - Compare workflow performance"
+    @echo ""
+    @echo "💡 Windows users: Choose the right setup for your terminal:"
+    @echo "   • PowerShell (bare metal): .\\setup-windows.ps1 (run as Admin)"
+    @echo "   • Git Bash: just setup (colors work automatically!)"
+    @echo "   • Command Prompt: just setup-simple (no colors)"
+    @echo "   • Any terminal: NO_COLOR=1 just setup"
+    @echo ""
+    @echo "⚠️  SHELL ERROR? If you see 'shell: program not found':"
+    @echo "   1. Install Git for Windows first: .\\setup-windows.ps1"
+    @echo "   2. Or add this to your PowerShell profile:"
+    @echo "      function jb { just --shell 'C:\\Program Files\\Git\\bin\\bash.exe' @args }"
+    @echo "   3. Then use 'jb' instead of 'just' (e.g., 'jb go', 'jb setup')"
 
 # Common clippy flags - Rust master approach
 common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clippy::multiple_crate_versions -W clippy::panic -W clippy::todo -W clippy::unimplemented -D warnings"
