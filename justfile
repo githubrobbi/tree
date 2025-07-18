@@ -9,13 +9,13 @@ export TERM := "xterm-256color"
 export COLORTERM := "truecolor"
 export CARGO_TERM_COLOR := "always"
 
-# Colors for output - respects NO_COLOR environment variable
-# Set NO_COLOR=1 to disable colors (useful for Windows terminals without ANSI support)
-GREEN := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;32m' }
-BLUE := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;34m' }
-YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[1;33m' }
-RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;31m' }
-NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0m' }
+# Colors for output - cross-platform compatible
+# PowerShell needs $([char]27), bash/Unix uses \033
+GREEN := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0;32m" } else { '\033[0;32m' }
+BLUE := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0;34m" } else { '\033[0;34m' }
+YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[1;33m" } else { '\033[1;33m' }
+RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0;31m" } else { '\033[0;31m' }
+NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0m" } else { '\033[0m' }
 
 # Default recipe - show available commands
 default:
@@ -29,6 +29,7 @@ default:
     @echo "  just setup        - Smart setup (check & install missing tools)"
     @echo "  just setup-windows - Windows setup (no ANSI colors)"
     @echo "  just setup-nocolor - Cross-platform setup (no ANSI colors)"
+    @echo "  just setup-powershell - PowerShell setup (with colors)"
     @echo "  just setup-simple  - Basic PowerShell-compatible setup"
     @echo ""
     @echo "{{GREEN}}📋 Individual Steps:{{NC}}"
@@ -55,11 +56,11 @@ default:
     @echo "  just version      - Show current version"
     @echo "  just benchmark-both - Compare workflow performance"
     @echo ""
-    @echo "{{YELLOW}}💡 Windows users:{{NC}} If you see raw escape sequences instead of colors:"
-    @echo "   • Use Git Bash terminal (recommended)"
-    @echo "   • Or run: set NO_COLOR=1 && just setup"
-    @echo "   • Or try: just setup-nocolor"
-    @echo "   • If shell errors occur: just setup-simple"
+    @echo "{{YELLOW}}💡 Windows users:{{NC}} Choose the right setup for your terminal:"
+    @echo "   • PowerShell: just setup-powershell (with colors!)"
+    @echo "   • Git Bash: just setup-windows (recommended)"
+    @echo "   • Any terminal: just setup-simple (no colors)"
+    @echo "   • Or set NO_COLOR=1 && just setup"
 
 # Common clippy flags - Rust master approach
 common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clippy::multiple_crate_versions -W clippy::panic -W clippy::todo -W clippy::unimplemented -D warnings"
@@ -419,26 +420,94 @@ setup:
 # Windows-specific setup with better error handling and no ANSI colors
 # Use this on Windows if you see raw escape sequences like \033[0;32m instead of colors
 #
-# WINDOWS USERS: If this command fails with "Could not find `cygpath` executable",
-# please use Git Bash instead of PowerShell/Command Prompt, or run:
-# 1. Install Git for Windows (includes Git Bash)
-# 2. Run this command from Git Bash terminal
-# 3. Or use: set NO_COLOR=1 && just setup
+# WINDOWS USERS: This command is designed for Git Bash terminal.
+# If you're using PowerShell/Command Prompt, use: just setup-simple
 setup-windows:
-    @echo "🔧 Windows Development Environment Setup"
-    @echo "Checking and installing only missing tools..."
-    @echo ""
-    @echo "🦀 Checking Rust development tools..."
+    #!/usr/bin/env bash
+    export NO_COLOR=1
+    echo "🔧 Windows Development Environment Setup (No Colors)"
+    echo "Checking and installing only missing tools..."
+    echo ""
+    echo "🦀 Checking Rust development tools..."
     just setup-core-tools
     just setup-performance-tools
     just setup-quality-tools
-    just setup-analysis-tools
+    just setup-analysis-tools-windows
     just setup-rust-toolchain
     just setup-platform-tools
     just setup-git-config
-    @echo ""
-    @echo "✅ Development environment ready!"
-    @echo "🚀 Run 'just go' to start developing"
+    echo ""
+    echo "✅ Development environment ready!"
+    echo "🚀 Run 'just go' to start developing"
+
+# Windows-specific analysis tools (skips problematic cargo-semver-checks)
+setup-analysis-tools-windows:
+    @echo "{{BLUE}}🔬 Analysis & Debugging Tools{{NC}}"
+    # cargo-audit - Security vulnerability scanner
+    @if ! command -v cargo-audit >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-audit (security scanner)...{{NC}}"; \
+        cargo install cargo-audit --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-audit already installed{{NC}}"; \
+    fi
+    # cargo-outdated - Check for outdated dependencies
+    @if ! command -v cargo-outdated >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-outdated (dependency checker)...{{NC}}"; \
+        cargo install cargo-outdated --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-outdated already installed{{NC}}"; \
+    fi
+    # cargo-udeps - Find unused dependencies
+    @if ! command -v cargo-udeps >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-udeps (unused deps finder)...{{NC}}"; \
+        cargo install cargo-udeps --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-udeps already installed{{NC}}"; \
+    fi
+    # cargo-machete - Remove unused dependencies
+    @if ! command -v cargo-machete >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-machete (dependency cleaner)...{{NC}}"; \
+        cargo install cargo-machete --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-machete already installed{{NC}}"; \
+    fi
+    # cargo-expand - Macro expansion
+    @if ! command -v cargo-expand >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-expand (macro expansion)...{{NC}}"; \
+        cargo install cargo-expand --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-expand already installed{{NC}}"; \
+    fi
+    # cargo-geiger - Unsafe code detector
+    @if ! command -v cargo-geiger >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-geiger (unsafe code detector)...{{NC}}"; \
+        cargo install cargo-geiger --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-geiger already installed{{NC}}"; \
+    fi
+    # SKIP cargo-semver-checks due to Windows compilation issues
+    @echo "{{YELLOW}}  ⚠️  cargo-semver-checks skipped (Windows compilation issues){{NC}}"
+    # cargo-criterion - Benchmarking
+    @if ! command -v cargo-criterion >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-criterion (benchmarking)...{{NC}}"; \
+        cargo install cargo-criterion --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-criterion already installed{{NC}}"; \
+    fi
+    # cargo-tarpaulin - Alternative coverage tool
+    @if ! command -v cargo-tarpaulin >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-tarpaulin (coverage alternative)...{{NC}}"; \
+        cargo install cargo-tarpaulin --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-tarpaulin already installed{{NC}}"; \
+    fi
+    # cargo-miri - Undefined behavior detector
+    @if ! command -v cargo-miri >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-miri (undefined behavior detector)...{{NC}}"; \
+        rustup component add miri --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-miri already installed{{NC}}"; \
+    fi
 
 # Cross-platform setup without colors (alternative for any platform)
 # This version works in PowerShell, Command Prompt, and Unix shells
@@ -458,9 +527,37 @@ setup-nocolor:
     @echo "✅ Development environment ready!"
     @echo "🚀 Run 'just go' to start developing"
 
-# Simple PowerShell-compatible setup for Windows
+# PowerShell-compatible setup with proper ANSI colors for Windows
+# This version uses PowerShell's [char]27 syntax for proper color display
+setup-powershell:
+    @Write-Host "$([char]27)[0;34m🔧 PowerShell Setup with Colors$([char]27)[0m"
+    @Write-Host "Installing essential Rust development tools..."
+    @Write-Host ""
+    @Write-Host "$([char]27)[0;34m🦀 Installing Rust development tools...$([char]27)[0m"
+    cargo install cargo-binstall --quiet || Write-Host "$([char]27)[1;33mcargo-binstall already installed or failed$([char]27)[0m"
+    cargo install cargo-watch --quiet || Write-Host "$([char]27)[1;33mcargo-watch already installed or failed$([char]27)[0m"
+    cargo install cargo-nextest --quiet || Write-Host "$([char]27)[1;33mcargo-nextest already installed or failed$([char]27)[0m"
+    cargo install cargo-llvm-cov --quiet || Write-Host "$([char]27)[1;33mcargo-llvm-cov already installed or failed$([char]27)[0m"
+    cargo install cargo-deny --quiet || Write-Host "$([char]27)[1;33mcargo-deny already installed or failed$([char]27)[0m"
+    cargo install cargo-audit --quiet || Write-Host "$([char]27)[1;33mcargo-audit already installed or failed$([char]27)[0m"
+    cargo install cargo-outdated --quiet || Write-Host "$([char]27)[1;33mcargo-outdated already installed or failed$([char]27)[0m"
+    cargo install cargo-udeps --quiet || Write-Host "$([char]27)[1;33mcargo-udeps already installed or failed$([char]27)[0m"
+    cargo install cargo-machete --quiet || Write-Host "$([char]27)[1;33mcargo-machete already installed or failed$([char]27)[0m"
+    cargo install cargo-expand --quiet || Write-Host "$([char]27)[1;33mcargo-expand already installed or failed$([char]27)[0m"
+    cargo install cargo-geiger --quiet || Write-Host "$([char]27)[1;33mcargo-geiger already installed or failed$([char]27)[0m"
+    @Write-Host "$([char]27)[1;33m⚠️  Skipping cargo-semver-checks (known Windows compilation issues)$([char]27)[0m"
+    cargo install cargo-criterion --quiet || Write-Host "$([char]27)[1;33mcargo-criterion already installed or failed$([char]27)[0m"
+    @Write-Host ""
+    @Write-Host "$([char]27)[0;32m✅ Essential Rust tools installed!$([char]27)[0m"
+    @Write-Host "$([char]27)[0;32m🚀 Run 'cargo build' to test your setup$([char]27)[0m"
+
+# Simple PowerShell-compatible setup for Windows (no colors)
 # Run this if other commands fail with shell errors
+# This version skips cargo-semver-checks to avoid compilation issues
 setup-simple:
+    @echo "🔧 Simple Setup for Windows PowerShell/Command Prompt"
+    @echo "Installing essential Rust development tools..."
+    @echo ""
     cargo install cargo-binstall --quiet || echo "cargo-binstall already installed or failed"
     cargo install cargo-watch --quiet || echo "cargo-watch already installed or failed"
     cargo install cargo-nextest --quiet || echo "cargo-nextest already installed or failed"
@@ -468,8 +565,16 @@ setup-simple:
     cargo install cargo-deny --quiet || echo "cargo-deny already installed or failed"
     cargo install cargo-audit --quiet || echo "cargo-audit already installed or failed"
     cargo install cargo-outdated --quiet || echo "cargo-outdated already installed or failed"
-    @echo "✅ Basic Rust tools installed!"
+    cargo install cargo-udeps --quiet || echo "cargo-udeps already installed or failed"
+    cargo install cargo-machete --quiet || echo "cargo-machete already installed or failed"
+    cargo install cargo-expand --quiet || echo "cargo-expand already installed or failed"
+    cargo install cargo-geiger --quiet || echo "cargo-geiger already installed or failed"
+    @echo "⚠️  Skipping cargo-semver-checks (known Windows compilation issues)"
+    cargo install cargo-criterion --quiet || echo "cargo-criterion already installed or failed"
+    @echo ""
+    @echo "✅ Essential Rust tools installed!"
     @echo "🚀 Run 'cargo build' to test your setup"
+    @echo "💡 For full setup with colors, use Git Bash and run 'just setup'"
 
 # Smart Rust tools installation - blazing fast development & compilation tools
 setup-rust-tools:
@@ -600,15 +705,10 @@ setup-analysis-tools:
         echo "{{GREEN}}  ✅ cargo-geiger already installed{{NC}}"; \
     fi
 
-    # cargo-semver-checks - Semantic versioning compliance (optional due to compilation issues)
+    # cargo-semver-checks - Semantic versioning compliance (DISABLED due to compilation issues)
     @if ! command -v cargo-semver-checks >/dev/null 2>&1; then \
-        echo "{{BLUE}}  → Installing cargo-semver-checks (semver compliance)...{{NC}}"; \
-        if cargo install cargo-semver-checks --quiet; then \
-            echo "{{GREEN}}  ✅ cargo-semver-checks installed successfully{{NC}}"; \
-        else \
-            echo "{{YELLOW}}  ⚠️  cargo-semver-checks failed to install (known issue on some systems){{NC}}"; \
-            echo "{{YELLOW}}     This is optional and won't affect core functionality{{NC}}"; \
-        fi; \
+        echo "{{YELLOW}}  ⚠️  cargo-semver-checks skipped (known compilation issues with v0.42.0){{NC}}"; \
+        echo "{{YELLOW}}     Will be re-enabled when upstream fixes are available{{NC}}"; \
     else \
         echo "{{GREEN}}  ✅ cargo-semver-checks already installed{{NC}}"; \
     fi
