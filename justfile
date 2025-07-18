@@ -140,31 +140,33 @@ test_flags   := common_flags + " -A clippy::unwrap_used -A clippy::expect_used"
 # Formatting & testing
 # ─────────────────────────────────────────
 fmt:
-    @echo "{{BLUE}}📝 Formatting code…{{NC}}"
+    @echo "\033[0;34m📝 Formatting code…\033[0m"
     CARGO_TERM_COLOR=always cargo fmt --all
 
 test:
-    @echo "{{BLUE}}🧪 Running all tests…{{NC}}"
-    @if command -v cargo-nextest >/dev/null 2>&1; then \
-        CARGO_TERM_COLOR=always cargo nextest run --workspace --all-features; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-nextest not found, falling back to cargo test{{NC}}"; \
-        CARGO_TERM_COLOR=always cargo test --workspace --all-features --all-targets; \
+    #!/usr/bin/env bash
+    echo "\033[0;34m🧪 Running all tests…\033[0m"
+    if command -v cargo-nextest >/dev/null 2>&1; then
+        CARGO_TERM_COLOR=always cargo nextest run --workspace --all-features
+    else
+        echo "\033[1;33m⚠️  cargo-nextest not found, falling back to cargo test\033[0m"
+        CARGO_TERM_COLOR=always cargo test --workspace --all-features --all-targets
     fi
 
 doc:
-    @echo "{{BLUE}}📚 Running documentation tests…{{NC}}"
+    @echo "\033[0;34m📚 Running documentation tests…\033[0m"
     cargo test --workspace --doc --all-features
 
 coverage:
-    @echo "{{BLUE}}📊 Generating coverage report…{{NC}}"
+    #!/usr/bin/env bash
+    echo "\033[0;34m📊 Generating coverage report…\033[0m"
     cargo clean
-    @if command -v cargo-nextest >/dev/null 2>&1; then \
-        cargo llvm-cov nextest --workspace --all-features --html; \
-    else \
-        cargo llvm-cov test --workspace --all-features --all-targets --html; \
+    if command -v cargo-nextest >/dev/null 2>&1; then
+        cargo llvm-cov nextest --workspace --all-features --html
+    else
+        cargo llvm-cov test --workspace --all-features --all-targets --html
     fi
-    @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
+    echo "\033[0;32m📁 Coverage report: target/llvm-cov/html/index.html\033[0m"
 
 lint-prod:
     cargo clippy --lib --bins -- {{prod_flags}}
@@ -179,8 +181,11 @@ deploy:
     just copy-binary release
 
 dev:
-    @echo "{{BLUE}}🔄 Starting watch mode…{{NC}}"
-    -cargo watch --version || just _install-if-missing cargo-watch cargo-watch
+    #!/usr/bin/env bash
+    echo "\033[0;34m🔄 Starting watch mode…\033[0m"
+    if ! command -v cargo-watch >/dev/null 2>&1; then
+        just _install-if-missing cargo-watch cargo-watch
+    fi
     cargo watch -x "test --workspace" -x "clippy --workspace --all-targets --all-features -- {{test_flags}}"
 
 check:
@@ -192,7 +197,7 @@ clean:
 
 copy-binary profile:
     cargo build --{{profile}}
-    @echo "{{GREEN}}✅ Binary deployment complete{{NC}}"
+    @echo "\033[0;32m✅ Binary deployment complete\033[0m"
 
 # ─────────────────────────────────────────
 # Two-Phase Professional Workflow
@@ -200,121 +205,123 @@ copy-binary profile:
 
 # PHASE 1: Code & Extensive Testing (Fast-Fail)
 phase1-test:
-    @echo "{{BLUE}}🧪 PHASE 1: Code & Extensive Testing (FAST-FAIL){{NC}}"
-    @echo "{{YELLOW}}Running MOST extensive tests - STOPPING at FIRST failure...{{NC}}"
-    @echo "========================================================"
-    @echo ""
+    #!/usr/bin/env bash
+    echo "\033[0;34m🧪 PHASE 1: Code & Extensive Testing (FAST-FAIL)\033[0m"
+    echo "\033[1;33mRunning MOST extensive tests - STOPPING at FIRST failure...\033[0m"
+    echo "========================================================"
+    echo ""
 
     # Step 1: Clean build artifacts (prevent cross-project contamination)
-    @echo "{{BLUE}}Step 1: Cleaning build artifacts...{{NC}}"
+    echo "\033[0;34mStep 1: Cleaning build artifacts...\033[0m"
     cargo clean
-    @echo "{{GREEN}}✅ Build artifacts cleaned{{NC}}"
+    echo "\033[0;32m✅ Build artifacts cleaned\033[0m"
 
     # Step 2: Auto-formatting
-    @echo "{{BLUE}}Step 2: Auto-formatting code...{{NC}}"
+    echo "\033[0;34mStep 2: Auto-formatting code...\033[0m"
     cargo fmt --all
 
     # Step 3: Comprehensive compilation and validation (FAST-FAIL)
-    @echo "{{BLUE}}Step 3: Comprehensive compilation and validation (FAST-FAIL)...{{NC}}"
+    echo "\033[0;34mStep 3: Comprehensive compilation and validation (FAST-FAIL)...\033[0m"
 
     # 3a: Build with coverage and run unit/integration tests with report (optimized)
-    @echo "{{BLUE}}  → Running unit & integration tests with coverage report (optimized)...{{NC}}"
-    @if command -v cargo-nextest >/dev/null 2>&1; then \
-        echo "{{BLUE}}    Using nextest for blazing-fast test execution...{{NC}}"; \
-        cargo llvm-cov nextest --workspace --all-features --html; \
-    else \
-        echo "{{YELLOW}}    Using standard test runner...{{NC}}"; \
-        cargo llvm-cov test --workspace --all-features --all-targets --html; \
+    echo "\033[0;34m  → Running unit & integration tests with coverage report (optimized)...\033[0m"
+    if command -v cargo-nextest >/dev/null 2>&1; then
+        echo "\033[0;34m    Using nextest for blazing-fast test execution...\033[0m"
+        cargo llvm-cov nextest --workspace --all-features --html
+    else
+        echo "\033[1;33m    Using standard test runner...\033[0m"
+        cargo llvm-cov test --workspace --all-features --all-targets --html
     fi
-    @echo "{{GREEN}}✅ Unit & integration tests passed, coverage report generated{{NC}}"
-    @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
+    echo "\033[0;32m✅ Unit & integration tests passed, coverage report generated\033[0m"
+    echo "\033[0;32m📁 Coverage report: target/llvm-cov/html/index.html\033[0m"
 
     # 3b: Run ONLY doc tests (optimal performance - minimal recompilation)
-    @echo "{{BLUE}}  → Running documentation tests only...{{NC}}"
+    echo "\033[0;34m  → Running documentation tests only...\033[0m"
     cargo test --workspace --doc --all-features
-    @echo "{{GREEN}}✅ Documentation tests passed{{NC}}"
+    echo "\033[0;32m✅ Documentation tests passed\033[0m"
 
     # 3c: Production linting (reuses compilation artifacts)
-    @echo "{{BLUE}}  → Ultra-strict production linting...{{NC}}"
+    echo "\033[0;34m  → Ultra-strict production linting...\033[0m"
     cargo clippy --lib --bins -- {{prod_flags}}
-    @echo "{{GREEN}}✅ Production code linting passed{{NC}}"
+    echo "\033[0;32m✅ Production code linting passed\033[0m"
 
     # 3d: Test linting (reuses compilation artifacts)
-    @echo "{{BLUE}}  → Pragmatic test linting...{{NC}}"
+    echo "\033[0;34m  → Pragmatic test linting...\033[0m"
     cargo clippy --tests -- {{test_flags}}
-    @echo "{{GREEN}}✅ Test code linting passed{{NC}}"
+    echo "\033[0;32m✅ Test code linting passed\033[0m"
 
     # Step 4: Format validation (final check) (FAST-FAIL)
-    @echo "{{BLUE}}Step 4: Final format validation (FAST-FAIL)...{{NC}}"
+    echo "\033[0;34mStep 4: Final format validation (FAST-FAIL)...\033[0m"
     cargo fmt --all -- --check
 
-    @echo ""
-    @echo "{{GREEN}}✅ PHASE 1 FAST-FAIL COMPLETE: All extensive tests passed, code ready for commit!{{NC}}"
-    @echo "{{BLUE}}💡 Next: Run 'just phase2-ship' when ready to build/commit/push{{NC}}"
+    echo ""
+    echo "\033[0;32m✅ PHASE 1 FAST-FAIL COMPLETE: All extensive tests passed, code ready for commit!\033[0m"
+    echo "\033[0;34m💡 Next: Run 'just phase2-ship' when ready to build/commit/push\033[0m"
 
 # PHASE 2: Version/Build/Deploy (Professional Grade)
 phase2-ship:
-    @echo "{{BLUE}}🚀 PHASE 2: Version/Build/Deploy (Post-Testing){{NC}}"
-    @echo "{{YELLOW}}Assumes Phase 1 completed: format ✅ clippy ✅ compile ✅ tests ✅{{NC}}"
-    @echo "========================================================"
-    @echo ""
+    #!/usr/bin/env bash
+    echo "\033[0;34m🚀 PHASE 2: Version/Build/Deploy (Post-Testing)\033[0m"
+    echo "\033[1;33mAssumes Phase 1 completed: format ✅ clippy ✅ compile ✅ tests ✅\033[0m"
+    echo "========================================================"
+    echo ""
 
     # Step 1: Version increment
-    @echo "{{BLUE}}Step 1: Version increment...{{NC}}"
-    @if [ -f "./build/update_version.rs" ]; then \
-        ./build/update_version.rs patch; \
-    else \
-        echo "{{YELLOW}}⚠️  Version script not found, skipping version increment{{NC}}"; \
+    echo "\033[0;34mStep 1: Version increment...\033[0m"
+    if [ -f "./build/update_version.rs" ]; then
+        ./build/update_version.rs patch
+    else
+        echo "\033[1;33m⚠️  Version script not found, skipping version increment\033[0m"
     fi
 
     # Step 2: Build with new version
-    @echo "{{BLUE}}Step 2: Building release binary...{{NC}}"
+    echo "\033[0;34mStep 2: Building release binary...\033[0m"
     cargo build --release
 
     # Step 3: Copy binary to deployment location
-    @echo "{{BLUE}}Step 3: Copy binary to deployment location...{{NC}}"
+    echo "\033[0;34mStep 3: Copy binary to deployment location...\033[0m"
     just copy-binary release
 
     # Step 4: Add all changes to git
-    @echo "{{BLUE}}Step 4: Adding all changes to staging area...{{NC}}"
+    echo "\033[0;34mStep 4: Adding all changes to staging area...\033[0m"
     git add .
 
     # Step 5: Create auto-generated commit
-    @echo "{{BLUE}}Step 5: Creating auto-generated commit...{{NC}}"
-    git commit -m "chore: release v`grep '^version' Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/'` - comprehensive testing complete [auto-commit]"
+    echo "\033[0;34mStep 5: Creating auto-generated commit...\033[0m"
+    git commit -m "chore: release v$(grep '^version' Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/') - comprehensive testing complete [auto-commit]"
 
     # Step 6: Sync with remote and push
-    @echo "{{BLUE}}Step 6: Syncing with remote and pushing...{{NC}}"
+    echo "\033[0;34mStep 6: Syncing with remote and pushing...\033[0m"
     git pull origin main --rebase
     git push origin main
 
-    @echo ""
-    @echo "{{GREEN}}✅ PHASE 2 COMPLETE: Version incremented, built, deployed, committed, and pushed!{{NC}}"
+    echo ""
+    echo "\033[0;32m✅ PHASE 2 COMPLETE: Version incremented, built, deployed, committed, and pushed!\033[0m"
 
 # Complete two-phase fast-fail workflow - perfect for rapid development
 go:
-    @echo "{{BLUE}}🚀 Complete Two-Phase Fast-Fail Workflow{{NC}}"
-    @echo "{{YELLOW}}Failing fast at ANY error in either phase...{{NC}}"
+    @echo "\033[0;34m🚀 Complete Two-Phase Fast-Fail Workflow\033[0m"
+    @echo "\033[1;33mFailing fast at ANY error in either phase...\033[0m"
     @echo "========================================================"
     @echo ""
 
     # PHASE 1: Comprehensive fast-fail testing and validation
-    @echo "{{BLUE}}🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation{{NC}}"
+    @echo "\033[0;34m🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation\033[0m"
     just phase1-test
 
     @echo ""
-    @echo "{{GREEN}}✅ PHASE 1 COMPLETE - All validation passed!{{NC}}"
-    @echo "{{BLUE}}🚀 Starting PHASE 2: Build/Deploy...{{NC}}"
+    @echo "\033[0;32m✅ PHASE 1 COMPLETE - All validation passed!\033[0m"
+    @echo "\033[0;34m🚀 Starting PHASE 2: Build/Deploy...\033[0m"
     @echo ""
 
     # PHASE 2: Fast-fail build and deployment
-    @echo "{{BLUE}}📦 PHASE 2: Fast-Fail Build & Deploy{{NC}}"
+    @echo "\033[0;34m📦 PHASE 2: Fast-Fail Build & Deploy\033[0m"
     just phase2-ship
 
     @echo ""
-    @echo "{{GREEN}}🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!{{NC}}"
-    @echo "{{GREEN}}✅ Phase 1: Testing & Validation{{NC}}"
-    @echo "{{GREEN}}✅ Phase 2: Build/Commit/Push/Deploy{{NC}}"
+    @echo "\033[0;32m🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!\033[0m"
+    @echo "\033[0;32m✅ Phase 1: Testing & Validation\033[0m"
+    @echo "\033[0;32m✅ Phase 2: Build/Commit/Push/Deploy\033[0m"
 
 # ─────────────────────────────────────────
 # Analysis & Quality Assurance
@@ -322,93 +329,97 @@ go:
 
 # Comprehensive security audit
 audit:
-    @echo "{{BLUE}}🔒 Comprehensive security audit...{{NC}}"
+    #!/usr/bin/env bash
+    echo "\033[0;34m🔒 Comprehensive security audit...\033[0m"
 
     # cargo-audit - Security vulnerability scanner
-    @echo "{{BLUE}}  → Running cargo-audit (vulnerability scan)...{{NC}}"
-    @if command -v cargo-audit >/dev/null 2>&1; then \
-        cargo audit; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-audit not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Running cargo-audit (vulnerability scan)...\033[0m"
+    if command -v cargo-audit >/dev/null 2>&1; then
+        cargo audit
+    else
+        echo "\033[1;33m⚠️  cargo-audit not found, run 'just setup' first\033[0m"
     fi
 
     # cargo-deny - Comprehensive dependency analysis
-    @echo "{{BLUE}}  → Running cargo-deny (dependency analysis)...{{NC}}"
-    @if command -v cargo-deny >/dev/null 2>&1; then \
-        cargo deny check; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-deny not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Running cargo-deny (dependency analysis)...\033[0m"
+    if command -v cargo-deny >/dev/null 2>&1; then
+        cargo deny check
+    else
+        echo "\033[1;33m⚠️  cargo-deny not found, run 'just setup' first\033[0m"
     fi
 
     # cargo-geiger - Unsafe code detection
-    @echo "{{BLUE}}  → Running cargo-geiger (unsafe code detection)...{{NC}}"
-    @if command -v cargo-geiger >/dev/null 2>&1; then \
-        cargo geiger; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-geiger not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Running cargo-geiger (unsafe code detection)...\033[0m"
+    if command -v cargo-geiger >/dev/null 2>&1; then
+        cargo geiger
+    else
+        echo "\033[1;33m⚠️  cargo-geiger not found, run 'just setup' first\033[0m"
     fi
 
 # Show current version
 version:
-    @echo "{{BLUE}}📋 Current version:{{NC}}"
+    @echo "\033[0;34m📋 Current version:\033[0m"
     @grep '^version' Cargo.toml | head -1
 
 # Dependency optimization and cleanup
 deps-optimize:
-    @echo "{{BLUE}}🔧 Optimizing dependencies...{{NC}}"
+    #!/usr/bin/env bash
+    echo "\033[0;34m🔧 Optimizing dependencies...\033[0m"
 
     # Find unused dependencies
-    @echo "{{BLUE}}  → Finding unused dependencies...{{NC}}"
-    @if command -v cargo-udeps >/dev/null 2>&1; then \
-        cargo +nightly udeps; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-udeps not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Finding unused dependencies...\033[0m"
+    if command -v cargo-udeps >/dev/null 2>&1; then
+        cargo +nightly udeps
+    else
+        echo "\033[1;33m⚠️  cargo-udeps not found, run 'just setup' first\033[0m"
     fi
 
     # Remove unused dependencies automatically
-    @echo "{{BLUE}}  → Removing unused dependencies...{{NC}}"
-    @if command -v cargo-machete >/dev/null 2>&1; then \
-        cargo machete; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-machete not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Removing unused dependencies...\033[0m"
+    if command -v cargo-machete >/dev/null 2>&1; then
+        cargo machete
+    else
+        echo "\033[1;33m⚠️  cargo-machete not found, run 'just setup' first\033[0m"
     fi
 
     # Check for outdated dependencies
-    @echo "{{BLUE}}  → Checking for outdated dependencies...{{NC}}"
-    @if command -v cargo-outdated >/dev/null 2>&1; then \
-        cargo outdated; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-outdated not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Checking for outdated dependencies...\033[0m"
+    if command -v cargo-outdated >/dev/null 2>&1; then
+        cargo outdated
+    else
+        echo "\033[1;33m⚠️  cargo-outdated not found, run 'just setup' first\033[0m"
     fi
 
 # Advanced debugging and analysis
 debug-deep:
-    @echo "{{BLUE}}🔬 Deep debugging and analysis...{{NC}}"
+    #!/usr/bin/env bash
+    echo "\033[0;34m🔬 Deep debugging and analysis...\033[0m"
 
     # Expand macros for debugging
-    @echo "{{BLUE}}  → Expanding macros...{{NC}}"
-    @if command -v cargo-expand >/dev/null 2>&1; then \
-        cargo expand; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-expand not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Expanding macros...\033[0m"
+    if command -v cargo-expand >/dev/null 2>&1; then
+        cargo expand
+    else
+        echo "\033[1;33m⚠️  cargo-expand not found, run 'just setup' first\033[0m"
     fi
 
     # Check for undefined behavior with Miri
-    @echo "{{BLUE}}  → Running Miri (undefined behavior detection)...{{NC}}"
-    @if rustup component list --installed | grep -q "miri"; then \
-        cargo +nightly miri test; \
-    else \
-        echo "{{YELLOW}}⚠️  miri component not found, run 'just setup' first{{NC}}"; \
+    echo "\033[0;34m  → Running Miri (undefined behavior detection)...\033[0m"
+    if rustup component list --installed | grep -q "miri"; then
+        cargo +nightly miri test
+    else
+        echo "\033[1;33m⚠️  miri component not found, run 'just setup' first\033[0m"
     fi
 
 # Performance benchmarking
 bench:
-    @echo "{{BLUE}}⚡ Running performance benchmarks...{{NC}}"
-    @if command -v cargo-criterion >/dev/null 2>&1; then \
-        cargo criterion; \
-    else \
-        echo "{{YELLOW}}⚠️  cargo-criterion not found, running standard benchmarks{{NC}}"; \
-        cargo bench; \
+    #!/usr/bin/env bash
+    echo "\033[0;34m⚡ Running performance benchmarks...\033[0m"
+    if command -v cargo-criterion >/dev/null 2>&1; then
+        cargo criterion
+    else
+        echo "\033[1;33m⚠️  cargo-criterion not found, running standard benchmarks\033[0m"
+        cargo bench
     fi
 
 # ─────────────────────────────────────────
@@ -444,6 +455,7 @@ setup-platform-tools:
 # Git aliases & config
 # ─────────────────────────────────────────
 setup-git-config:
+    #!/usr/bin/env bash
     git config --global alias.st status || true
     git config --global alias.co checkout || true
     git config --global alias.br branch || true
@@ -454,7 +466,7 @@ setup-git-config:
     git config --global init.defaultBranch main || true
     git config --global pull.rebase false || true
     git config --global core.autocrlf input || true
-    echo "{{GREEN}}✅ Git configuration complete{{NC}}"
+    echo "✅ Git configuration complete"
 
 # ─────────────────────────────────────────
 # Performance Benchmarking
@@ -462,37 +474,39 @@ setup-git-config:
 
 # Benchmark current approach (llvm-cov for all tests)
 benchmark-current:
-    @echo "{{BLUE}}⏱️  BENCHMARKING CURRENT APPROACH (llvm-cov for all tests){{NC}}"
-    @echo "{{YELLOW}}Starting timer...{{NC}}"
-    @echo "Starting at: $$(date)"
-    @time (cargo clean && \
+    #!/usr/bin/env bash
+    echo "\033[0;34m⏱️  BENCHMARKING CURRENT APPROACH (llvm-cov for all tests)\033[0m"
+    echo "\033[1;33mStarting timer...\033[0m"
+    echo "Starting at: $(date)"
+    time (cargo clean && \
            cargo llvm-cov test --workspace --all-features --all-targets --html && \
            cargo llvm-cov test --workspace --all-features --doctests --no-report && \
            cargo clippy --lib --bins -- {{prod_flags}} && \
            cargo clippy --tests -- {{test_flags}})
-    @echo "{{GREEN}}✅ Current approach completed{{NC}}"
+    echo "\033[0;32m✅ Current approach completed\033[0m"
 
 # Benchmark separate approach (separate cargo test --doc)
 benchmark-separate:
-    @echo "{{BLUE}}⏱️  BENCHMARKING SEPARATE APPROACH (separate cargo test --doc){{NC}}"
-    @echo "{{YELLOW}}Starting timer...{{NC}}"
-    @echo "Starting at: $$(date)"
-    @time (cargo clean && \
+    #!/usr/bin/env bash
+    echo "\033[0;34m⏱️  BENCHMARKING SEPARATE APPROACH (separate cargo test --doc)\033[0m"
+    echo "\033[1;33mStarting timer...\033[0m"
+    echo "Starting at: $(date)"
+    time (cargo clean && \
            cargo llvm-cov test --workspace --all-features --all-targets --html && \
            cargo test --workspace --doc --all-features && \
            cargo clippy --lib --bins -- {{prod_flags}} && \
            cargo clippy --tests -- {{test_flags}})
-    @echo "{{GREEN}}✅ Separate approach completed{{NC}}"
+    echo "\033[0;32m✅ Separate approach completed\033[0m"
 
 # Compare both approaches
 benchmark-both:
-    @echo "{{BLUE}}🏁 PERFORMANCE COMPARISON{{NC}}"
-    @echo "{{YELLOW}}Running both approaches for accurate measurement...{{NC}}"
+    @echo "\033[0;34m🏁 PERFORMANCE COMPARISON\033[0m"
+    @echo "\033[1;33mRunning both approaches for accurate measurement...\033[0m"
     @echo ""
-    @echo "{{BLUE}}=== APPROACH 1: Current (llvm-cov for all tests) ==={{NC}}"
+    @echo "\033[0;34m=== APPROACH 1: Current (llvm-cov for all tests) ===\033[0m"
     just benchmark-current
     @echo ""
-    @echo "{{BLUE}}=== APPROACH 2: Separate (cargo test --doc) ==={{NC}}"
+    @echo "\033[0;34m=== APPROACH 2: Separate (cargo test --doc) ===\033[0m"
     just benchmark-separate
     @echo ""
-    @echo "{{GREEN}}✅ Benchmark complete! Compare the times above.{{NC}}"
+    @echo "\033[0;32m✅ Benchmark complete! Compare the times above.\033[0m"
