@@ -2,6 +2,11 @@
 # Professional CLI tree utility with intelligent ignore patterns
 # Cross-platform compatible - works on Windows, macOS, and Linux
 
+
+# Pick bash for Unix-likes, PowerShell for Windows
+set shell          := ["bash", "-cu"]              # default for Linux/macOS
+set windows-shell  := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
+
 # Export color environment variables for Git Bash
 export FORCE_COLOR := "1"
 export CLICOLOR_FORCE := "1"
