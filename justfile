@@ -21,7 +21,60 @@ YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[1;33m
 RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;31m' }
 NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0m' }
 
-# Default recipe - works on all platforms, guides users to correct setup
+# Default recipe - Windows version that works without shell dependencies
+[windows]
+default:
+    Write-Host "🌳 Tree - Modern Rust Development Workflow"
+    Write-Host "=================================================="
+    Write-Host ""
+    Write-Host "🚀 Main Workflow:"
+    Write-Host "  just go           - Complete two-phase fast-fail workflow"
+    Write-Host ""
+    Write-Host "⚙️  Environment Setup:"
+    Write-Host "  just setup        - Smart setup (Unix/Linux/macOS/Git Bash)"
+    Write-Host "  just setup-powershell - Windows PowerShell setup (run first!)"
+    Write-Host "  just setup-windows - Windows Git Bash setup"
+    Write-Host "  just setup-simple  - Command Prompt compatible"
+    Write-Host "  just setup-nocolor - Any terminal (no colors)"
+    Write-Host ""
+    Write-Host "📋 Individual Steps:"
+    Write-Host "  just fmt          - Format code"
+    Write-Host "  just test         - Run all tests"
+    Write-Host "  just doc          - Run documentation tests"
+    Write-Host "  just coverage     - Generate coverage report"
+    Write-Host "  just lint-prod    - Ultra-strict production linting"
+    Write-Host "  just lint-tests   - Pragmatic test linting"
+    Write-Host "  just build        - Build release binary"
+    Write-Host "  just deploy       - Copy binary to ~/bin"
+    Write-Host ""
+    Write-Host "🔧 Development:"
+    Write-Host "  just dev          - Watch mode with testing"
+    Write-Host "  just check        - Quick validation"
+    Write-Host "  just clean        - Clean build artifacts"
+    Write-Host ""
+    Write-Host "📊 Analysis & Optimization:"
+    Write-Host "  just audit        - Comprehensive security audit"
+    Write-Host "  just deps-optimize - Find & remove unused dependencies"
+    Write-Host "  just debug-deep   - Advanced debugging (macros, miri)"
+    Write-Host "  just semver-check - Semantic versioning compliance"
+    Write-Host "  just bench        - Performance benchmarking"
+    Write-Host "  just version      - Show current version"
+    Write-Host "  just benchmark-both - Compare workflow performance"
+    Write-Host ""
+    Write-Host "💡 Windows users: Choose the right setup for your terminal:"
+    Write-Host "   • PowerShell (bare metal): .\setup-windows.ps1 (run as Admin)"
+    Write-Host "   • Git Bash: just setup (colors work automatically!)"
+    Write-Host "   • Command Prompt: just setup-simple (no colors)"
+    Write-Host "   • Any terminal: NO_COLOR=1 just setup"
+    Write-Host ""
+    Write-Host "⚠️  SHELL ERROR? If you see 'shell: program not found':"
+    Write-Host "   1. Install Git for Windows first: .\setup-windows.ps1"
+    Write-Host "   2. Or add this to your PowerShell profile:"
+    Write-Host "      function jb { just --shell 'C:\Program Files\Git\bin\bash.exe' @args }"
+    Write-Host "   3. Then use 'jb' instead of 'just' (e.g., 'jb go', 'jb setup')"
+
+# Default recipe - Unix/Linux/macOS version
+[unix]
 default:
     @echo "🌳 Tree - Modern Rust Development Workflow"
     @echo "=================================================="
