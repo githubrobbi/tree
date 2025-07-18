@@ -63,23 +63,25 @@ default:
 # Helper recipes (prefixed with _)
 # ─────────────────────────────────────────
 _install-if-missing TOOL CRATE:
-    @if ! command -v {{TOOL}} >/dev/null 2>&1; then \
-        echo "📦 Installing {{CRATE}} …"; \
-        if command -v cargo-binstall >/dev/null 2>&1; then \
-            cargo binstall {{CRATE}} --no-confirm --quiet; \
-        else \
-            cargo install {{CRATE}} --locked --quiet; \
-        fi; \
-    else \
-        echo "✅ {{TOOL}} already installed (skip)"; \
+    #!/usr/bin/env bash
+    if ! command -v {{TOOL}} >/dev/null 2>&1; then
+        echo "📦 Installing {{CRATE}} …"
+        if command -v cargo-binstall >/dev/null 2>&1; then
+            cargo binstall {{CRATE}} --no-confirm --quiet
+        else
+            cargo install {{CRATE}} --locked --quiet
+        fi
+    else
+        echo "✅ {{TOOL}} already installed (skip)"
     fi
 
 _install-component COMPONENT:
-    @if ! rustup component list --installed | grep -q "^{{COMPONENT}} "; then \
-        echo "📦 Adding rustup component {{COMPONENT}} …"; \
-        rustup component add {{COMPONENT}}; \
-    else \
-        echo "✅ component {{COMPONENT}} already installed"; \
+    #!/usr/bin/env bash
+    if ! rustup component list --installed | grep -q "^{{COMPONENT}} "; then
+        echo "📦 Adding rustup component {{COMPONENT}} …"
+        rustup component add {{COMPONENT}}
+    else
+        echo "✅ component {{COMPONENT}} already installed"
     fi
 
 # Upgrade all global cargo binaries
@@ -96,13 +98,32 @@ rust_components := "llvm-tools-preview miri"
 # Universal setup (idempotent + fast-fail)
 # ─────────────────────────────────────────
 setup:
-    @echo "🔧 Universal Smart Development Environment Setup" && echo ""
-    @echo "🦀 Installing Rust CLI tools (idempotent)" && echo ""
-    tools="{{all_tools}}"; for t in $tools; do just _install-if-missing $t $t; done
-    echo "" && echo "🔧 Adding rustup components" && echo ""
-    comps="{{rust_components}}"; for c in $comps; do just _install-component $c; done
-    echo ""
-    echo "✅ Rust toolchain ready!" && echo ""
+    @echo "🔧 Universal Smart Development Environment Setup"
+    @echo ""
+    @echo "🦀 Installing Rust CLI tools (idempotent)"
+    @echo ""
+    just _install-if-missing cargo-binstall cargo-binstall
+    just _install-if-missing cargo-watch cargo-watch
+    just _install-if-missing cargo-nextest cargo-nextest
+    just _install-if-missing cargo-llvm-cov cargo-llvm-cov
+    just _install-if-missing cargo-deny cargo-deny
+    just _install-if-missing cargo-audit cargo-audit
+    just _install-if-missing cargo-outdated cargo-outdated
+    just _install-if-missing cargo-udeps cargo-udeps
+    just _install-if-missing cargo-machete cargo-machete
+    just _install-if-missing cargo-expand cargo-expand
+    just _install-if-missing cargo-geiger cargo-geiger
+    just _install-if-missing cargo-criterion cargo-criterion
+    just _install-if-missing cargo-tarpaulin cargo-tarpaulin
+    just _install-if-missing rust-script rust-script
+    @echo ""
+    @echo "🔧 Adding rustup components"
+    @echo ""
+    just _install-component llvm-tools-preview
+    just _install-component miri
+    @echo ""
+    @echo "✅ Rust toolchain ready!"
+    @echo ""
     just setup-platform-tools
     just setup-git-config
     @echo ""
