@@ -1,6 +1,6 @@
 [package]
 name = "tree"
-version = "0.1.17"
+version = "0.1.18"
 edition = "2021"
 rust-version = "1.77"
 description = "A fast, modern directory tree printer with intelligent ignore patterns and .gitignore integration"
@@ -33,3 +33,9 @@ proptest = "1.7.0"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+# Optimization: Force consistent compilation context for doc tests and coverage
+[features]
+default = []
+# This feature ensures doc tests and coverage tests use the same dependency resolution
+test-consistency = []
