@@ -2,6 +2,13 @@
 # Professional CLI tree utility with intelligent ignore patterns
 # Cross-platform compatible - works on Windows, macOS, and Linux
 
+# Export color environment variables for Git Bash
+export FORCE_COLOR := "1"
+export CLICOLOR_FORCE := "1"
+export TERM := "xterm-256color"
+export COLORTERM := "truecolor"
+export CARGO_TERM_COLOR := "always"
+
 # Colors for output (just handles ANSI codes cross-platform)
 GREEN := '\033[0;32m'
 BLUE := '\033[0;34m'
@@ -48,7 +55,7 @@ test_flags := common_flags + " -A clippy::unwrap_used -A clippy::expect_used"
 # Format code
 fmt:
     @echo "{{BLUE}}📝 Formatting code...{{NC}}"
-    cargo fmt --all
+    CARGO_TERM_COLOR=always cargo fmt --all
 
 # Run all tests
 test:
@@ -66,7 +73,7 @@ coverage:
     @echo "{{BLUE}}  → Cleaning build artifacts first...{{NC}}"
     cargo clean
     -cargo llvm-cov --version || cargo install cargo-llvm-cov
-    cargo llvm-cov test --workspace --all-features --all-targets --html
+    CARGO_TARGET_DIR=target cargo llvm-cov test --workspace --all-features --all-targets --html
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
 
 # Ultra-strict production linting
@@ -140,7 +147,7 @@ phase1-test:
 
     # Step 4: Generate coverage report (HTML)
     @echo "{{BLUE}}Step 4: Generating coverage report...{{NC}}"
-    cargo llvm-cov report --html
+    CARGO_TARGET_DIR=target cargo llvm-cov report --html
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
 
     # Step 5: Documentation tests (FAST-FAIL)
