@@ -60,9 +60,11 @@ doc:
     @echo "{{BLUE}}📚 Running documentation tests...{{NC}}"
     cargo test --workspace --doc --all-features
 
-# Generate coverage report
+# Generate coverage report (clean first to prevent contamination)
 coverage:
     @echo "{{BLUE}}📊 Generating coverage report...{{NC}}"
+    @echo "{{BLUE}}  → Cleaning build artifacts first...{{NC}}"
+    cargo clean
     -cargo llvm-cov --version || cargo install cargo-llvm-cov
     cargo llvm-cov test --workspace --all-features --all-targets --html
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
@@ -121,35 +123,40 @@ phase1-test:
     @echo "========================================================"
     @echo ""
 
-    # Step 1: Auto-formatting
-    @echo "{{BLUE}}Step 1: Auto-formatting code...{{NC}}"
+    # Step 1: Clean build artifacts (prevent cross-project contamination)
+    @echo "{{BLUE}}Step 1: Cleaning build artifacts...{{NC}}"
+    cargo clean
+    @echo "{{GREEN}}✅ Build artifacts cleaned{{NC}}"
+
+    # Step 2: Auto-formatting
+    @echo "{{BLUE}}Step 2: Auto-formatting code...{{NC}}"
     cargo fmt --all
 
-    # Step 2: Run all tests with coverage data collection (FAST-FAIL)
-    @echo "{{BLUE}}Step 2: Running all tests with coverage data collection (FAST-FAIL)...{{NC}}"
+    # Step 3: Run all tests with coverage data collection (FAST-FAIL)
+    @echo "{{BLUE}}Step 3: Running all tests with coverage data collection (FAST-FAIL)...{{NC}}"
     -cargo llvm-cov --version || cargo install cargo-llvm-cov
     cargo llvm-cov test --workspace --all-features --all-targets --no-report
     @echo "{{GREEN}}✅ All tests passed, coverage data collected{{NC}}"
 
-    # Step 3: Generate coverage report
-    @echo "{{BLUE}}Step 3: Generating coverage report...{{NC}}"
+    # Step 4: Generate coverage report (HTML)
+    @echo "{{BLUE}}Step 4: Generating coverage report...{{NC}}"
     cargo llvm-cov report --html
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
 
-    # Step 4: Documentation tests (FAST-FAIL)
-    @echo "{{BLUE}}Step 4: Documentation tests validation (FAST-FAIL)...{{NC}}"
+    # Step 5: Documentation tests (FAST-FAIL)
+    @echo "{{BLUE}}Step 5: Documentation tests validation (FAST-FAIL)...{{NC}}"
     cargo test --workspace --doc --all-features
 
-    # Step 5: Ultra-strict production linting (FAST-FAIL)
-    @echo "{{BLUE}}Step 5: Ultra-strict production code linting (FAST-FAIL)...{{NC}}"
+    # Step 6: Ultra-strict production linting (FAST-FAIL)
+    @echo "{{BLUE}}Step 6: Ultra-strict production code linting (FAST-FAIL)...{{NC}}"
     just lint-prod
 
-    # Step 6: Pragmatic test linting (FAST-FAIL)
-    @echo "{{BLUE}}Step 6: Pragmatic test code linting (FAST-FAIL)...{{NC}}"
+    # Step 7: Pragmatic test linting (FAST-FAIL)
+    @echo "{{BLUE}}Step 7: Pragmatic test code linting (FAST-FAIL)...{{NC}}"
     just lint-tests
 
-    # Step 7: Format validation (final check) (FAST-FAIL)
-    @echo "{{BLUE}}Step 7: Final format validation (FAST-FAIL)...{{NC}}"
+    # Step 8: Format validation (final check) (FAST-FAIL)
+    @echo "{{BLUE}}Step 8: Final format validation (FAST-FAIL)...{{NC}}"
     cargo fmt --all -- --check
 
     @echo ""
