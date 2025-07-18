@@ -70,7 +70,7 @@ test-env:
     @echo "TERM: $TERM"
     @echo "COLORTERM: $COLORTERM"
     @echo "FORCE_COLOR: $FORCE_COLOR"
-    @echo "NO_COLOR: $NO_COLOR"
+    @echo "NO_COLOR: ${NO_COLOR:-not set}"
     @echo "SHELL: $SHELL"
     @echo "OS: {{os()}}"
 
@@ -92,8 +92,8 @@ test-shells:
 test-cat:
     @echo "Testing with cat:"
     @cat << 'EOF'
-	\033[0;35mCat with here document\033[0m
-	EOF
+    \033[0;35mCat with here document\033[0m
+    EOF
 
 # Test with different justfile approaches
 test-justfile-methods:
