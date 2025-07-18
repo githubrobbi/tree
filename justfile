@@ -89,7 +89,7 @@ default:
     else \
         printf "\033[1;33m💡 Windows users:\033[0m Choose the right setup for your terminal:\n"; \
     fi
-    @printf "   • PowerShell (no Git): just setup-powershell (installs Git + tools)\n"
+    @printf "   • PowerShell (bare metal): .\\setup-windows.ps1 (run as Admin)\n"
     @printf "   • Git Bash: just setup (colors work automatically!)\n"
     @printf "   • Command Prompt: just setup-simple (no colors)\n"
     @printf "   • Any terminal: NO_COLOR=1 just setup\n"
@@ -570,65 +570,26 @@ setup-nocolor:
     @echo "✅ Development environment ready!"
     @echo "🚀 Run 'just go' to start developing"
 
-# 🚀 RUST MASTER: Complete Windows PowerShell Setup
-# This is the FIRST command Windows users should run in PowerShell
-# Installs Git, then sets up the complete Rust development environment
+# 🚀 RUST MASTER: Bare Metal Windows PowerShell Setup
+# For bare metal Windows setup, use the standalone PowerShell script instead
+# This command provides instructions for the proper setup process
 setup-powershell:
-    @Write-Host "$([char]27)[0;34m🚀 Rust Master: Complete Windows PowerShell Setup$([char]27)[0m"
-    @Write-Host "$([char]27)[1;33mThis will install Git for Windows + complete Rust toolchain$([char]27)[0m"
-    @Write-Host ""
-    @Write-Host "$([char]27)[0;34m📋 Step 1: Installing Chocolatey (Windows Package Manager)$([char]27)[0m"
-    @if (!(Get-Command choco -ErrorAction SilentlyContinue)) { \
-        Write-Host "$([char]27)[0;33m  → Installing Chocolatey...$([char]27)[0m"; \
-        Set-ExecutionPolicy Bypass -Scope Process -Force; \
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
-        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')); \
-    } else { \
-        Write-Host "$([char]27)[0;32m  ✅ Chocolatey already installed$([char]27)[0m"; \
-    }
-    @Write-Host ""
-    @Write-Host "$([char]27)[0;34m📋 Step 2: Installing Git for Windows$([char]27)[0m"
-    @if (!(Get-Command git -ErrorAction SilentlyContinue)) { \
-        Write-Host "$([char]27)[0;33m  → Installing Git for Windows...$([char]27)[0m"; \
-        choco install git -y; \
-        Write-Host "$([char]27)[0;32m  ✅ Git installed! Please restart PowerShell and run 'just setup'$([char]27)[0m"; \
-    } else { \
-        Write-Host "$([char]27)[0;32m  ✅ Git already installed$([char]27)[0m"; \
-    }
-    @Write-Host ""
-    @Write-Host "$([char]27)[0;34m📋 Step 3: Installing Just Command Runner$([char]27)[0m"
-    @if (!(Get-Command just -ErrorAction SilentlyContinue)) { \
-        Write-Host "$([char]27)[0;33m  → Installing just...$([char]27)[0m"; \
-        choco install just -y; \
-    } else { \
-        Write-Host "$([char]27)[0;32m  ✅ just already installed$([char]27)[0m"; \
-    }
-    @Write-Host ""
-    @Write-Host "$([char]27)[0;34m📋 Step 4: Installing Essential Rust Tools$([char]27)[0m"
-    @Write-Host "$([char]27)[0;33m  → Installing core development tools...$([char]27)[0m"
-    cargo install cargo-binstall --quiet || Write-Host "$([char]27)[1;33m    cargo-binstall already installed or failed$([char]27)[0m"
-    cargo install cargo-watch --quiet || Write-Host "$([char]27)[1;33m    cargo-watch already installed or failed$([char]27)[0m"
-    cargo install cargo-nextest --quiet || Write-Host "$([char]27)[1;33m    cargo-nextest already installed or failed$([char]27)[0m"
-    cargo install cargo-llvm-cov --quiet || Write-Host "$([char]27)[1;33m    cargo-llvm-cov already installed or failed$([char]27)[0m"
-    cargo install cargo-deny --quiet || Write-Host "$([char]27)[1;33m    cargo-deny already installed or failed$([char]27)[0m"
-    cargo install cargo-audit --quiet || Write-Host "$([char]27)[1;33m    cargo-audit already installed or failed$([char]27)[0m"
-    cargo install cargo-outdated --quiet || Write-Host "$([char]27)[1;33m    cargo-outdated already installed or failed$([char]27)[0m"
-    cargo install cargo-udeps --quiet || Write-Host "$([char]27)[1;33m    cargo-udeps already installed or failed$([char]27)[0m"
-    cargo install cargo-machete --quiet || Write-Host "$([char]27)[1;33m    cargo-machete already installed or failed$([char]27)[0m"
-    cargo install cargo-expand --quiet || Write-Host "$([char]27)[1;33m    cargo-expand already installed or failed$([char]27)[0m"
-    cargo install cargo-geiger --quiet || Write-Host "$([char]27)[1;33m    cargo-geiger already installed or failed$([char]27)[0m"
-    @Write-Host "$([char]27)[1;33m    ⚠️  Skipping cargo-semver-checks (known Windows compilation issues)$([char]27)[0m"
-    cargo install cargo-criterion --quiet || Write-Host "$([char]27)[1;33m    cargo-criterion already installed or failed$([char]27)[0m"
-    @Write-Host ""
-    @Write-Host "$([char]27)[0;32m🎉 RUST MASTER SETUP COMPLETE!$([char]27)[0m"
-    @Write-Host "$([char]27)[0;32m✅ Git for Windows installed$([char]27)[0m"
-    @Write-Host "$([char]27)[0;32m✅ Complete Rust toolchain installed$([char]27)[0m"
-    @Write-Host "$([char]27)[0;32m✅ World-class development tools ready$([char]27)[0m"
-    @Write-Host ""
-    @Write-Host "$([char]27)[1;33m🚀 NEXT STEPS:$([char]27)[0m"
-    @Write-Host "$([char]27)[0;33m  1. Restart PowerShell to refresh PATH$([char]27)[0m"
-    @Write-Host "$([char]27)[0;33m  2. Run 'just setup' for additional tools$([char]27)[0m"
-    @Write-Host "$([char]27)[0;33m  3. Run 'just go' to start developing$([char]27)[0m"
+    @echo "🚀 Rust Master: Bare Metal Windows Setup"
+    @echo ""
+    @echo "For bare metal Windows setup, please use the standalone PowerShell script:"
+    @echo ""
+    @echo "1. Open PowerShell as Administrator"
+    @echo "2. Run: .\\setup-windows.ps1"
+    @echo ""
+    @echo "This script will install:"
+    @echo "  ✅ Chocolatey package manager"
+    @echo "  ✅ Git for Windows"
+    @echo "  ✅ Just command runner"
+    @echo "  ✅ Complete Rust development toolchain"
+    @echo ""
+    @echo "After setup, restart PowerShell and use 'jb' commands:"
+    @echo "  jb setup  - Additional platform tools"
+    @echo "  jb go     - Start developing"
 
 # Simple PowerShell-compatible setup for Windows (no colors)
 # Run this if other commands fail with shell errors
