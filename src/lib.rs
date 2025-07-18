@@ -68,6 +68,8 @@
     clippy::cargo,
     clippy::pedantic
 )]
+// Allow unused crate dependencies since clap is used by the binary but not the library
+#![allow(unused_crate_dependencies)]
 
 use std::path::Path;
 use thiserror::Error;

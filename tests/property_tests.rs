@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Robert Nio
 
+// Allow unused crate dependencies since not all dev dependencies are used in every test file
+#![allow(unused_crate_dependencies)]
+
 //! # Property-Based Tests for Tree Library
 //!
 //! This module contains property-based tests using the `proptest` framework to
@@ -38,6 +41,9 @@
 //! Each property test runs hundreds of iterations with different random inputs,
 //! providing much broader coverage than traditional unit tests while catching
 //! edge cases that might be missed in manual test case design.
+
+#![allow(clippy::unwrap_used)] // Tests should panic on failure
+#![allow(clippy::expect_used)] // Tests should panic on failure
 
 use proptest::prelude::*;
 use std::fs;

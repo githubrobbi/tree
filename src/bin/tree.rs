@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Robert Nio
 
+// Allow unused crate dependencies since some deps are used by the library but not the binary
+#![allow(unused_crate_dependencies)]
+
 //! # Tree CLI Application
 //!
 //! A modern, fast command-line directory tree printer with intelligent ignore

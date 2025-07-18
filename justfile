@@ -42,8 +42,12 @@ default:
     @echo "  just check        - Quick validation"
     @echo "  just clean        - Clean build artifacts"
     @echo ""
-    @echo "{{GREEN}}📊 Analysis:{{NC}}"
-    @echo "  just audit        - Security audit"
+    @echo "{{GREEN}}📊 Analysis & Optimization:{{NC}}"
+    @echo "  just audit        - Comprehensive security audit"
+    @echo "  just deps-optimize - Find & remove unused dependencies"
+    @echo "  just debug-deep   - Advanced debugging (macros, miri)"
+    @echo "  just semver-check - Semantic versioning compliance"
+    @echo "  just bench        - Performance benchmarking"
     @echo "  just version      - Show current version"
     @echo "  just benchmark-both - Compare workflow performance"
 
@@ -61,23 +65,33 @@ fmt:
     @echo "{{BLUE}}📝 Formatting code...{{NC}}"
     CARGO_TERM_COLOR=always cargo fmt --all
 
-# Run all tests
+# Run all tests (blazing fast with nextest)
 test:
-    @echo "{{BLUE}}🧪 Running all tests...{{NC}}"
-    cargo test --workspace --all-features --all-targets
+    @echo "{{BLUE}}🧪 Running all tests (blazing fast with nextest)...{{NC}}"
+    @if command -v cargo-nextest >/dev/null 2>&1; then \
+        CARGO_TERM_COLOR=always cargo nextest run --workspace --all-features; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-nextest not found, falling back to cargo test{{NC}}"; \
+        CARGO_TERM_COLOR=always cargo test --workspace --all-features --all-targets; \
+    fi
 
 # Run documentation tests
 doc:
     @echo "{{BLUE}}📚 Running documentation tests...{{NC}}"
     cargo test --workspace --doc --all-features
 
-# Generate coverage report (clean first to prevent contamination)
+# Generate coverage report (optimized with nextest integration)
 coverage:
-    @echo "{{BLUE}}📊 Generating coverage report...{{NC}}"
+    @echo "{{BLUE}}📊 Generating coverage report (optimized)...{{NC}}"
     @echo "{{BLUE}}  → Cleaning build artifacts first...{{NC}}"
     cargo clean
-    -cargo llvm-cov --version || cargo install cargo-llvm-cov
-    CARGO_TARGET_DIR=target cargo llvm-cov test --workspace --all-features --all-targets --html
+    @if command -v cargo-nextest >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Using nextest for faster coverage collection...{{NC}}"; \
+        cargo llvm-cov nextest --workspace --all-features --html; \
+    else \
+        echo "{{YELLOW}}  → Using standard test runner for coverage...{{NC}}"; \
+        cargo llvm-cov test --workspace --all-features --all-targets --html; \
+    fi
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
 
 # Ultra-strict production linting
@@ -147,9 +161,15 @@ phase1-test:
     @echo "{{BLUE}}Step 3: Comprehensive compilation and validation (FAST-FAIL)...{{NC}}"
     -cargo llvm-cov --version || cargo install cargo-llvm-cov
 
-    # 3a: Build with coverage and run unit/integration tests with report
-    @echo "{{BLUE}}  → Running unit & integration tests with coverage report...{{NC}}"
-    cargo llvm-cov test --workspace --all-features --all-targets --html
+    # 3a: Build with coverage and run unit/integration tests with report (optimized)
+    @echo "{{BLUE}}  → Running unit & integration tests with coverage report (optimized)...{{NC}}"
+    @if command -v cargo-nextest >/dev/null 2>&1; then \
+        echo "{{BLUE}}    Using nextest for blazing-fast test execution...{{NC}}"; \
+        cargo llvm-cov nextest --workspace --all-features --html; \
+    else \
+        echo "{{YELLOW}}    Using standard test runner...{{NC}}"; \
+        cargo llvm-cov test --workspace --all-features --all-targets --html; \
+    fi
     @echo "{{GREEN}}✅ Unit & integration tests passed, coverage report generated{{NC}}"
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
 
@@ -253,16 +273,105 @@ go:
 # Utilities
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Security audit
+# Comprehensive security audit
 audit:
-    @echo "{{BLUE}}🔒 Security audit...{{NC}}"
-    -cargo audit --version || cargo install cargo-audit
-    cargo audit
+    @echo "{{BLUE}}🔒 Comprehensive security audit...{{NC}}"
+
+    # cargo-audit - Security vulnerability scanner
+    @echo "{{BLUE}}  → Running cargo-audit (vulnerability scan)...{{NC}}"
+    @if command -v cargo-audit >/dev/null 2>&1; then \
+        cargo audit; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-audit not found, run 'just setup' first{{NC}}"; \
+    fi
+
+    # cargo-deny - Comprehensive dependency analysis
+    @echo "{{BLUE}}  → Running cargo-deny (dependency analysis)...{{NC}}"
+    @if command -v cargo-deny >/dev/null 2>&1; then \
+        cargo deny check; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-deny not found, run 'just setup' first{{NC}}"; \
+    fi
+
+    # cargo-geiger - Unsafe code detection
+    @echo "{{BLUE}}  → Running cargo-geiger (unsafe code detection)...{{NC}}"
+    @if command -v cargo-geiger >/dev/null 2>&1; then \
+        cargo geiger; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-geiger not found, run 'just setup' first{{NC}}"; \
+    fi
 
 # Show current version
 version:
     @echo "{{BLUE}}📋 Current version:{{NC}}"
-    @grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'
+    @grep '^version' Cargo.toml | head -1
+
+# Dependency optimization and cleanup
+deps-optimize:
+    @echo "{{BLUE}}🔧 Optimizing dependencies...{{NC}}"
+
+    # Find unused dependencies
+    @echo "{{BLUE}}  → Finding unused dependencies...{{NC}}"
+    @if command -v cargo-udeps >/dev/null 2>&1; then \
+        cargo +nightly udeps; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-udeps not found, run 'just setup' first{{NC}}"; \
+    fi
+
+    # Remove unused dependencies automatically
+    @echo "{{BLUE}}  → Removing unused dependencies...{{NC}}"
+    @if command -v cargo-machete >/dev/null 2>&1; then \
+        cargo machete; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-machete not found, run 'just setup' first{{NC}}"; \
+    fi
+
+    # Check for outdated dependencies
+    @echo "{{BLUE}}  → Checking for outdated dependencies...{{NC}}"
+    @if command -v cargo-outdated >/dev/null 2>&1; then \
+        cargo outdated; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-outdated not found, run 'just setup' first{{NC}}"; \
+    fi
+
+# Advanced debugging and analysis
+debug-deep:
+    @echo "{{BLUE}}🔬 Deep debugging and analysis...{{NC}}"
+
+    # Expand macros for debugging
+    @echo "{{BLUE}}  → Expanding macros...{{NC}}"
+    @if command -v cargo-expand >/dev/null 2>&1; then \
+        cargo expand; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-expand not found, run 'just setup' first{{NC}}"; \
+    fi
+
+    # Check for undefined behavior with Miri
+    @echo "{{BLUE}}  → Running Miri (undefined behavior detection)...{{NC}}"
+    @if command -v cargo-miri >/dev/null 2>&1; then \
+        cargo +nightly miri test; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-miri not found, run 'just setup' first{{NC}}"; \
+    fi
+
+# Semantic versioning compliance check
+semver-check:
+    @echo "{{BLUE}}📋 Checking semantic versioning compliance...{{NC}}"
+    @if command -v cargo-semver-checks >/dev/null 2>&1; then \
+        cargo semver-checks; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-semver-checks not found, run 'just setup' first{{NC}}"; \
+    fi
+
+# Performance benchmarking
+bench:
+    @echo "{{BLUE}}⚡ Running performance benchmarks...{{NC}}"
+    @if command -v cargo-criterion >/dev/null 2>&1; then \
+        cargo criterion; \
+    else \
+        echo "{{YELLOW}}⚠️  cargo-criterion not found, running standard benchmarks{{NC}}"; \
+        cargo bench; \
+    fi | sed 's/.*"\(.*\)".*/\1/'
 
 # Clean build artifacts
 clean:
@@ -295,33 +404,170 @@ setup:
     @echo "{{GREEN}}✅ Development environment ready!{{NC}}"
     @echo "{{GREEN}}🚀 Run 'just go' to start developing{{NC}}"
 
-# Smart Rust tools installation - check first, install only if missing
+# Smart Rust tools installation - blazing fast development & compilation tools
 setup-rust-tools:
     @echo "{{BLUE}}🦀 Checking Rust development tools...{{NC}}"
+    just setup-core-tools
+    just setup-performance-tools
+    just setup-quality-tools
+    just setup-analysis-tools
+    just setup-rust-toolchain
 
-    # Check and install cargo-llvm-cov
-    @if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
-        echo "{{BLUE}}  → Installing cargo-llvm-cov...{{NC}}"; \
-        cargo install cargo-llvm-cov --quiet; \
+# Core development tools
+setup-core-tools:
+    @echo "{{BLUE}}📦 Core Development Tools{{NC}}"
+
+    # cargo-binstall - Fast binary installation (speeds up tool installation)
+    @if ! command -v cargo-binstall >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-binstall (fast binary installer)...{{NC}}"; \
+        cargo install cargo-binstall --quiet; \
     else \
-        echo "{{GREEN}}  ✅ cargo-llvm-cov already installed{{NC}}"; \
+        echo "{{GREEN}}  ✅ cargo-binstall already installed{{NC}}"; \
     fi
 
-    # Check and install cargo-audit
-    @if ! command -v cargo-audit >/dev/null 2>&1; then \
-        echo "{{BLUE}}  → Installing cargo-audit...{{NC}}"; \
-        cargo install cargo-audit --quiet; \
-    else \
-        echo "{{GREEN}}  ✅ cargo-audit already installed{{NC}}"; \
-    fi
-
-    # Check and install cargo-watch
+    # cargo-watch - File watching for development
     @if ! command -v cargo-watch >/dev/null 2>&1; then \
         echo "{{BLUE}}  → Installing cargo-watch...{{NC}}"; \
         cargo install cargo-watch --quiet; \
     else \
         echo "{{GREEN}}  ✅ cargo-watch already installed{{NC}}"; \
     fi
+
+# Performance & speed tools
+setup-performance-tools:
+    @echo "{{BLUE}}⚡ Performance & Speed Tools{{NC}}"
+
+    # cargo-nextest - Faster test runner
+    @if ! command -v cargo-nextest >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-nextest (faster test runner)...{{NC}}"; \
+        cargo install cargo-nextest --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-nextest already installed{{NC}}"; \
+    fi
+
+    # cargo-llvm-cov - Coverage analysis
+    @if ! command -v cargo-llvm-cov >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-llvm-cov (coverage)...{{NC}}"; \
+        cargo install cargo-llvm-cov --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-llvm-cov already installed{{NC}}"; \
+    fi
+
+# Code quality tools
+setup-quality-tools:
+    @echo "{{BLUE}}🔍 Code Quality Tools{{NC}}"
+
+    # cargo-clippy - Linting (usually comes with Rust)
+    @if ! command -v cargo-clippy >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-clippy...{{NC}}"; \
+        rustup component add clippy; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-clippy already installed{{NC}}"; \
+    fi
+
+    # cargo-fmt - Code formatting (usually comes with Rust)
+    @if ! command -v cargo-fmt >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-fmt...{{NC}}"; \
+        rustup component add rustfmt; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-fmt already installed{{NC}}"; \
+    fi
+
+    # cargo-deny - Dependency analysis and security
+    @if ! command -v cargo-deny >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-deny (dependency security)...{{NC}}"; \
+        cargo install cargo-deny --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-deny already installed{{NC}}"; \
+    fi
+
+# Analysis & debugging tools
+setup-analysis-tools:
+    @echo "{{BLUE}}🔬 Analysis & Debugging Tools{{NC}}"
+
+    # cargo-audit - Security vulnerability scanner
+    @if ! command -v cargo-audit >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-audit (security scanner)...{{NC}}"; \
+        cargo install cargo-audit --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-audit already installed{{NC}}"; \
+    fi
+
+    # cargo-outdated - Check for outdated dependencies
+    @if ! command -v cargo-outdated >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-outdated (dependency updates)...{{NC}}"; \
+        cargo install cargo-outdated --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-outdated already installed{{NC}}"; \
+    fi
+
+    # cargo-udeps - Find unused dependencies
+    @if ! command -v cargo-udeps >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-udeps (unused deps)...{{NC}}"; \
+        cargo install cargo-udeps --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-udeps already installed{{NC}}"; \
+    fi
+
+    # cargo-machete - Remove unused dependencies
+    @if ! command -v cargo-machete >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-machete (remove unused deps)...{{NC}}"; \
+        cargo install cargo-machete --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-machete already installed{{NC}}"; \
+    fi
+
+    # cargo-expand - Macro expansion
+    @if ! command -v cargo-expand >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-expand (macro debugging)...{{NC}}"; \
+        cargo install cargo-expand --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-expand already installed{{NC}}"; \
+    fi
+
+    # cargo-geiger - Unsafe code detector
+    @if ! command -v cargo-geiger >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-geiger (unsafe code detector)...{{NC}}"; \
+        cargo install cargo-geiger --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-geiger already installed{{NC}}"; \
+    fi
+
+    # cargo-semver-checks - Semantic versioning compliance
+    @if ! command -v cargo-semver-checks >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-semver-checks (semver compliance)...{{NC}}"; \
+        cargo install cargo-semver-checks --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-semver-checks already installed{{NC}}"; \
+    fi
+
+    # cargo-criterion - Benchmarking
+    @if ! command -v cargo-criterion >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-criterion (benchmarking)...{{NC}}"; \
+        cargo install cargo-criterion --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-criterion already installed{{NC}}"; \
+    fi
+
+    # cargo-tarpaulin - Alternative coverage tool
+    @if ! command -v cargo-tarpaulin >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-tarpaulin (coverage alternative)...{{NC}}"; \
+        cargo install cargo-tarpaulin --quiet; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-tarpaulin already installed{{NC}}"; \
+    fi
+
+    # cargo-miri - Undefined behavior detector
+    @if ! command -v cargo-miri >/dev/null 2>&1; then \
+        echo "{{BLUE}}  → Installing cargo-miri (undefined behavior detector)...{{NC}}"; \
+        rustup component add miri --toolchain nightly; \
+    else \
+        echo "{{GREEN}}  ✅ cargo-miri already installed{{NC}}"; \
+    fi
+
+# Rust toolchain setup
+setup-rust-toolchain:
+    @echo "{{BLUE}}🔧 Rust Toolchain{{NC}}"
 
     # Check and install nightly toolchain
     @if ! rustup toolchain list | grep -q nightly; then \

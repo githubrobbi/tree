@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Robert Nio
 
+// Allow unused crate dependencies since not all dev dependencies are used in every test file
+#![allow(unused_crate_dependencies)]
+
 //! # Integration Tests for Tree CLI
 //!
 //! This module contains comprehensive integration tests for the tree CLI application,
@@ -37,6 +40,7 @@
 //! and prevent test interference. Cleanup is automatic via RAII patterns.
 
 #![allow(clippy::unwrap_used)] // Tests should panic on failure
+#![allow(clippy::expect_used)] // Tests should panic on failure
 
 use assert_cmd::Command;
 use predicates::prelude::*;

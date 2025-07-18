@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2025 Robert Nio
 
+// Allow unused crate dependencies since not all dev dependencies are used in every test file
+#![allow(unused_crate_dependencies)]
+
 //! # Edge Case and Error Condition Tests
 //!
 //! This module contains tests specifically designed to cover edge cases,
@@ -16,6 +19,9 @@
 //!
 //! These tests are designed to achieve maximum code coverage by exercising
 //! code paths that are difficult to trigger in normal usage scenarios.
+
+#![allow(clippy::unwrap_used)] // Tests should panic on failure
+#![allow(clippy::expect_used)] // Tests should panic on failure
 
 use std::fs;
 use tempfile::TempDir;

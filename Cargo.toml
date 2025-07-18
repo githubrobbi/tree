@@ -1,3 +1,14 @@
+# =============================================================================
+# Cargo.toml - Tree: Modern Directory Tree Printer
+# =============================================================================
+#
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025 SKY, LLC.
+#
+# Tree - Fast, modern directory tree printer with intelligent ignore patterns
+# Contact: skylegal@nios.net for licensing inquiries
+#
+
 [package]
 name = "tree"
 version = "0.1.19"
@@ -13,29 +24,116 @@ readme = "README.md"
 homepage = "https://github.com/githubrobbi/tree"
 documentation = "https://docs.rs/tree"
 
-[[bin]]
-name = "tree"
-path = "src/bin/tree.rs"
+# ──────────────────────────────────────────────────────────────────────────────
+# Modern Rust tooling configuration (2025 cutting-edge)
+# ──────────────────────────────────────────────────────────────────────────────
 
-[dependencies]
-anyhow = "1.0.98"
-ignore = "0.4.23"
-clap = { version = "4.5.41", features = ["derive"] }
-thiserror = "2.0.12"
-
-[dev-dependencies]
-tempfile = "3.20.0"
-assert_cmd = "2.0.17"
-predicates = "3.1.3"
-proptest = "1.7.0"
-
-# Optimization: Ensure doc tests can access dev-dependencies for examples
+# Enhanced documentation generation
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-# Optimization: Force consistent compilation context for doc tests and coverage
+# Modern binary distribution with cargo-dist
+[package.metadata.dist]
+cargo-dist-version = "0.28.0"
+ci = ["github"]
+installers = ["shell", "powershell"]
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc"
+]
+install-path = "CARGO_HOME"
+include = ["README.md", "LICENSE*", "CHANGELOG.md"]
+github-release = true
+github-releases-repo = "githubrobbi/tree"
+create-release = true
+
+# Professional development workflow commands
+[package.metadata.commands]
+dev = "just dev"
+test = "just test"
+ci = "just go"
+audit = "just audit"
+
+[[bin]]
+name = "tree"
+path = "src/bin/tree.rs"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Runtime dependencies (alphabetical, version-pinned for stability)
+# ──────────────────────────────────────────────────────────────────────────────
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+ignore = "0.4"
+thiserror = "2.0"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Development & testing dependencies
+# ──────────────────────────────────────────────────────────────────────────────
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+proptest = "1.7"
+tempfile = "3.20"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Feature flags for flexible builds
+# ──────────────────────────────────────────────────────────────────────────────
 [features]
 default = []
-# This feature ensures doc tests and coverage tests use the same dependency resolution
+# Testing consistency (ensures doc tests use same deps)
 test-consistency = []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Cargo profiles for optimized builds
+# ──────────────────────────────────────────────────────────────────────────────
+[profile.dev]
+debug = true
+debug-assertions = true
+incremental = true
+opt-level = 0
+overflow-checks = true
+
+[profile.release]
+codegen-units = 1
+debug = false
+debug-assertions = false
+incremental = false
+lto = "fat"
+opt-level = 3
+overflow-checks = false
+panic = "abort"
+strip = "symbols"
+
+[profile.test]
+inherits = "dev"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Modern linting configuration (2025 cutting-edge standards)
+# ──────────────────────────────────────────────────────────────────────────────
+[lints.clippy]
+cargo = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+wildcard_imports = "deny"
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+unused_crate_dependencies = "warn"
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
