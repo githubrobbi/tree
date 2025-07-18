@@ -10,12 +10,13 @@ export COLORTERM := "truecolor"
 export CARGO_TERM_COLOR := "always"
 
 # Colors for output - cross-platform compatible
-# PowerShell needs $([char]27), bash/Unix uses \033
-GREEN := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0;32m" } else { '\033[0;32m' }
-BLUE := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0;34m" } else { '\033[0;34m' }
-YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[1;33m" } else { '\033[1;33m' }
-RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0;31m" } else { '\033[0;31m' }
-NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else if os() == "windows" { "$([char]27)[0m" } else { '\033[0m' }
+# Use bash-style escapes by default (works in Git Bash, Unix, macOS)
+# PowerShell users should use 'just setup-powershell' for colors
+GREEN := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;32m' }
+BLUE := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;34m' }
+YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[1;33m' }
+RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;31m' }
+NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0m' }
 
 # Default recipe - show available commands
 default:
@@ -26,11 +27,11 @@ default:
     @echo "  just go           - Complete two-phase fast-fail workflow"
     @echo ""
     @echo "{{GREEN}}⚙️  Environment Setup:{{NC}}"
-    @echo "  just setup        - Smart setup (check & install missing tools)"
-    @echo "  just setup-windows - Windows setup (no ANSI colors)"
-    @echo "  just setup-nocolor - Cross-platform setup (no ANSI colors)"
-    @echo "  just setup-powershell - PowerShell setup (with colors)"
-    @echo "  just setup-simple  - Basic PowerShell-compatible setup"
+    @echo "  just setup        - Smart setup (works in Git Bash & Unix)"
+    @echo "  just setup-windows - Windows Git Bash setup"
+    @echo "  just setup-powershell - PowerShell with colors"
+    @echo "  just setup-simple  - Command Prompt compatible"
+    @echo "  just setup-nocolor - Any terminal (no colors)"
     @echo ""
     @echo "{{GREEN}}📋 Individual Steps:{{NC}}"
     @echo "  just fmt          - Format code"
@@ -57,10 +58,10 @@ default:
     @echo "  just benchmark-both - Compare workflow performance"
     @echo ""
     @echo "{{YELLOW}}💡 Windows users:{{NC}} Choose the right setup for your terminal:"
-    @echo "   • PowerShell: just setup-powershell (with colors!)"
-    @echo "   • Git Bash: just setup-windows (recommended)"
-    @echo "   • Any terminal: just setup-simple (no colors)"
-    @echo "   • Or set NO_COLOR=1 && just setup"
+    @echo "   • Git Bash: just setup (colors work automatically!)"
+    @echo "   • PowerShell: just setup-powershell (PowerShell colors)"
+    @echo "   • Command Prompt: just setup-simple (no colors)"
+    @echo "   • Any terminal: set NO_COLOR=1 && just setup"
 
 # Common clippy flags - Rust master approach
 common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clippy::multiple_crate_versions -W clippy::panic -W clippy::todo -W clippy::unimplemented -D warnings"
