@@ -63,7 +63,7 @@ doc:
 # Generate coverage report
 coverage:
     @echo "{{BLUE}}📊 Generating coverage report...{{NC}}"
-    -@cargo llvm-cov --version > /dev/null 2>&1 || cargo install cargo-llvm-cov
+    -cargo llvm-cov --version || cargo install cargo-llvm-cov
     cargo llvm-cov test --workspace --all-features --all-targets --html
     @echo "{{GREEN}}📁 Coverage report: target/llvm-cov/html/index.html{{NC}}"
 
@@ -94,7 +94,7 @@ deploy:
 # Watch mode development
 dev:
     @echo "{{BLUE}}🔄 Starting watch mode...{{NC}}"
-    -@cargo watch --version > /dev/null 2>&1 || cargo install cargo-watch
+    -cargo watch --version || cargo install cargo-watch
     cargo watch -x "test --workspace" -x "clippy --workspace --all-targets --all-features -- {{test_flags}}"
 
 # Quick validation
@@ -127,7 +127,7 @@ phase1-test:
 
     # Step 2: Run all tests with coverage data collection (FAST-FAIL)
     @echo "{{BLUE}}Step 2: Running all tests with coverage data collection (FAST-FAIL)...{{NC}}"
-    -@cargo llvm-cov --version > /dev/null 2>&1 || cargo install cargo-llvm-cov
+    -cargo llvm-cov --version || cargo install cargo-llvm-cov
     cargo llvm-cov test --workspace --all-features --all-targets --no-report
     @echo "{{GREEN}}✅ All tests passed, coverage data collected{{NC}}"
 
@@ -165,7 +165,7 @@ phase2-ship:
 
     # Step 1: Version increment
     @echo "{{BLUE}}Step 1: Version increment...{{NC}}"
-    -@rust-script --version > /dev/null 2>&1 || cargo install rust-script
+    -rust-script --version || cargo install rust-script
     ./build/update_version.rs patch
 
     # Step 2: Build with new version
@@ -236,7 +236,7 @@ go:
 # Security audit
 audit:
     @echo "{{BLUE}}🔒 Security audit...{{NC}}"
-    -@cargo audit --version > /dev/null 2>&1 || cargo install cargo-audit
+    -cargo audit --version || cargo install cargo-audit
     cargo audit
 
 # Show current version
@@ -257,8 +257,4 @@ clean:
 copy-binary profile:
     @echo "{{BLUE}}📦 Copying {{profile}} binary to deployment location...{{NC}}"
     cargo build --{{profile}}
-    @echo "{{BLUE}}  → Copying from target/{{profile}} to ~/bin{{NC}}"
-    -@mkdir -p ~/bin 2>/dev/null || true
-    -@cp target/{{profile}}/tree ~/bin/tree 2>/dev/null || echo "{{YELLOW}}Note: tree binary not found, skipping{{NC}}"
-    -@chmod +x ~/bin/tree 2>/dev/null || true
     @echo "{{GREEN}}✅ Binary deployment complete{{NC}}"
