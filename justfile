@@ -9,12 +9,13 @@ export TERM := "xterm-256color"
 export COLORTERM := "truecolor"
 export CARGO_TERM_COLOR := "always"
 
-# Colors for output (just handles ANSI codes cross-platform)
-GREEN := '\033[0;32m'
-BLUE := '\033[0;34m'
-YELLOW := '\033[1;33m'
-RED := '\033[0;31m'
-NC := '\033[0m' # No Color
+# Colors for output - respects NO_COLOR environment variable
+# Set NO_COLOR=1 to disable colors (useful for Windows terminals without ANSI support)
+GREEN := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;32m' }
+BLUE := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;34m' }
+YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[1;33m' }
+RED := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;31m' }
+NC := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0m' }
 
 # Default recipe - show available commands
 default:
@@ -26,6 +27,7 @@ default:
     @echo ""
     @echo "{{GREEN}}⚙️  Environment Setup:{{NC}}"
     @echo "  just setup        - Smart setup (check & install missing tools)"
+    @echo "  just setup-windows - Windows setup (no ANSI colors)"
     @echo ""
     @echo "{{GREEN}}📋 Individual Steps:{{NC}}"
     @echo "  just fmt          - Format code"
@@ -50,6 +52,9 @@ default:
     @echo "  just bench        - Performance benchmarking"
     @echo "  just version      - Show current version"
     @echo "  just benchmark-both - Compare workflow performance"
+    @echo ""
+    @echo "{{YELLOW}}💡 Windows users:{{NC}} If you see raw escape sequences instead of colors,"
+    @echo "   use 'just setup-windows' or set NO_COLOR=1"
 
 # Common clippy flags - Rust master approach
 common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clippy::multiple_crate_versions -W clippy::panic -W clippy::todo -W clippy::unimplemented -D warnings"
@@ -360,7 +365,9 @@ semver-check:
     @if command -v cargo-semver-checks >/dev/null 2>&1; then \
         cargo semver-checks; \
     else \
-        echo "{{YELLOW}}⚠️  cargo-semver-checks not found, run 'just setup' first{{NC}}"; \
+        echo "{{YELLOW}}⚠️  cargo-semver-checks not available{{NC}}"; \
+        echo "{{YELLOW}}     This tool has known compilation issues on some systems{{NC}}"; \
+        echo "{{YELLOW}}     Skipping semver check - this is optional{{NC}}"; \
     fi
 
 # Performance benchmarking
@@ -403,6 +410,22 @@ setup:
     @echo ""
     @echo "{{GREEN}}✅ Development environment ready!{{NC}}"
     @echo "{{GREEN}}🚀 Run 'just go' to start developing{{NC}}"
+
+# Windows-specific setup with better error handling and no ANSI colors
+# Use this on Windows if you see raw escape sequences like \033[0;32m instead of colors
+# This sets NO_COLOR=1 to disable ANSI color codes
+setup-windows:
+    #!/usr/bin/env bash
+    export NO_COLOR=1
+    echo "🔧 Windows Development Environment Setup"
+    echo "Checking and installing only missing tools..."
+    echo ""
+    just setup-rust-tools
+    just setup-platform-tools
+    just setup-git-config
+    echo ""
+    echo "✅ Development environment ready!"
+    echo "🚀 Run 'just go' to start developing"
 
 # Smart Rust tools installation - blazing fast development & compilation tools
 setup-rust-tools:
@@ -533,10 +556,15 @@ setup-analysis-tools:
         echo "{{GREEN}}  ✅ cargo-geiger already installed{{NC}}"; \
     fi
 
-    # cargo-semver-checks - Semantic versioning compliance
+    # cargo-semver-checks - Semantic versioning compliance (optional due to compilation issues)
     @if ! command -v cargo-semver-checks >/dev/null 2>&1; then \
         echo "{{BLUE}}  → Installing cargo-semver-checks (semver compliance)...{{NC}}"; \
-        cargo install cargo-semver-checks --quiet; \
+        if cargo install cargo-semver-checks --quiet; then \
+            echo "{{GREEN}}  ✅ cargo-semver-checks installed successfully{{NC}}"; \
+        else \
+            echo "{{YELLOW}}  ⚠️  cargo-semver-checks failed to install (known issue on some systems){{NC}}"; \
+            echo "{{YELLOW}}     This is optional and won't affect core functionality{{NC}}"; \
+        fi; \
     else \
         echo "{{GREEN}}  ✅ cargo-semver-checks already installed{{NC}}"; \
     fi
@@ -588,87 +616,93 @@ setup-rust-toolchain:
 # Install platform-specific tools
 setup-platform-tools:
     #!/usr/bin/env bash
-    echo -e "\033[0;34m🖥️  Checking platform-specific tools...\033[0m"
+    echo "🖥️  Checking platform-specific tools..."
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo -e "\033[0;34m  → macOS detected\033[0m"
+        echo "  → macOS detected"
         # Check if Homebrew is installed
         if ! command -v brew &> /dev/null; then
-            echo -e "\033[0;34m  → Installing Homebrew...\033[0m"
+            echo "  → Installing Homebrew..."
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
         else
-            echo -e "\033[0;32m  ✅ Homebrew already installed\033[0m"
+            echo "  ✅ Homebrew already installed"
         fi
 
         # Install just if not present
         if ! command -v just &> /dev/null; then
-            echo -e "\033[0;34m  → Installing just via Homebrew...\033[0m"
+            echo "  → Installing just via Homebrew..."
             brew install just
         else
-            echo -e "\033[0;32m  ✅ just already installed\033[0m"
+            echo "  ✅ just already installed"
         fi
 
         # Install git if not present
         if ! command -v git &> /dev/null; then
-            echo -e "\033[0;34m  → Installing git via Homebrew...\033[0m"
+            echo "  → Installing git via Homebrew..."
             brew install git
         else
-            echo -e "\033[0;32m  ✅ git already installed\033[0m"
+            echo "  ✅ git already installed"
         fi
 
-    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$WINDIR" ]]; then
-        echo -e "\033[0;34m  → Windows detected, using Chocolatey...\033[0m"
+    elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ -n "$WINDIR" ]] || [[ "$OS" == "Windows_NT" ]]; then
+        echo "  → Windows detected, using Chocolatey..."
 
         # Check if Chocolatey is installed
         if ! command -v choco &> /dev/null; then
-            echo -e "\033[0;33m  → Installing Chocolatey...\033[0m"
+            echo "  → Installing Chocolatey..."
             powershell -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+        else
+            echo "  ✅ Chocolatey already installed"
         fi
 
         # Install just if not present
         if ! command -v just &> /dev/null; then
-            echo -e "\033[0;34m  → Installing just via Chocolatey...\033[0m"
+            echo "  → Installing just via Chocolatey..."
             choco install just -y
+        else
+            echo "  ✅ just already installed"
         fi
 
         # Install Git Bash if not present
         if ! command -v git &> /dev/null; then
-            echo -e "\033[0;34m  → Installing Git for Windows via Chocolatey...\033[0m"
+            echo "  → Installing Git for Windows via Chocolatey..."
             choco install git -y
+        else
+            echo "  ✅ git already installed"
         fi
 
     else
-        echo -e "\033[0;34m  → Linux detected, using package manager...\033[0m"
+        echo "  → Linux detected, using package manager..."
 
         # Detect Linux package manager and install tools
         if command -v apt-get &> /dev/null; then
-            echo -e "\033[0;34m  → Using apt-get...\033[0m"
+            echo "  → Using apt-get..."
             sudo apt-get update -qq
             sudo apt-get install -y git curl build-essential
 
             # Install just via cargo if not available in repos
             if ! command -v just &> /dev/null; then
-                echo -e "\033[0;34m  → Installing just via cargo...\033[0m"
+                echo "  → Installing just via cargo..."
                 cargo install just --quiet
             fi
 
         elif command -v yum &> /dev/null; then
-            echo -e "\033[0;34m  → Using yum...\033[0m"
+            echo "  → Using yum..."
             sudo yum install -y git curl gcc
             cargo install just --quiet
 
         elif command -v pacman &> /dev/null; then
-            echo -e "\033[0;34m  → Using pacman...\033[0m"
+            echo "  → Using pacman..."
             sudo pacman -S --noconfirm git curl base-devel
             cargo install just --quiet
 
         else
-            echo -e "\033[0;33m  → Unknown Linux distribution, installing just via cargo...\033[0m"
+            echo "  → Unknown Linux distribution, installing just via cargo..."
             cargo install just --quiet
         fi
     fi
 
-    echo -e "\033[0;32m✅ Platform tools installed\033[0m"
+    echo "✅ Platform tools installed"
 
 # Configure Git for optimal development workflow
 setup-git-config:
