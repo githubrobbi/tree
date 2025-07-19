@@ -240,8 +240,13 @@ setup:
     @echo "✅ Development environment ready!"
 
 # ─────────────────────────────────────────
-# Common clippy flags
+# Common clippy flags - Rust master approach
 # ─────────────────────────────────────────
+# 🔍 CLIPPY CONFIGURATION STRATEGY:
+# • common_flags: Base strict linting for all code
+# • prod_flags: Ultra-strict for production code (no unwrap/expect, requires docs)
+# • test_flags: Pragmatic for test code (allows unwrap/expect for test clarity)
+# ─────────────────────────────────────────────────────────────────────────────
 common_flags := "-D clippy::pedantic -D clippy::nursery -D clippy::cargo -A clippy::multiple_crate_versions -W clippy::panic -W clippy::todo -W clippy::unimplemented -D warnings"
 prod_flags   := common_flags + " -W clippy::unwrap_used -W clippy::expect_used -W clippy::missing_docs_in_private_items"
 test_flags   := common_flags + " -A clippy::unwrap_used -A clippy::expect_used"
@@ -280,11 +285,15 @@ coverage:
     fi
     echo "\033[0;32m📁 Coverage report: target/llvm-cov/html/index.html\033[0m"
 
+# Ultra-strict production linting (FAST-FAIL)
 lint-prod:
-    cargo clippy --lib --bins -- {{prod_flags}}
+    @printf "\033[0;34m🔍 Ultra-strict production linting (FAST-FAIL)...\033[0m\n"
+    cargo clippy --workspace --lib --bins --all-features -- {{prod_flags}}
 
+# Pragmatic test linting (FAST-FAIL)
 lint-tests:
-    cargo clippy --tests -- {{test_flags}}
+    @printf "\033[0;34m🧪 Pragmatic test linting (FAST-FAIL)...\033[0m\n"
+    cargo clippy --workspace --tests --all-features -- {{test_flags}}
 
 build:
     cargo build --release
@@ -298,7 +307,7 @@ dev:
     if ! command -v cargo-watch >/dev/null 2>&1; then
         just _install-if-missing cargo-watch cargo-watch
     fi
-    cargo watch -x "test --workspace" -x "clippy --workspace --all-targets --all-features -- {{test_flags}}"
+    cargo watch -x "test --workspace --all-features" -x "clippy --workspace --all-targets --all-features -- {{test_flags}}"
 
 check:
     cargo check --workspace --all-targets --all-features
@@ -349,11 +358,9 @@ phase1-test:
     @printf "\033[0;34m  → Running documentation tests only...\033[0m\n"
     cargo test --workspace --doc --all-features
     @printf "\033[0;32m✅ Documentation tests passed\033[0m\n"
-    @printf "\033[0;34m  → Ultra-strict production linting...\033[0m\n"
-    cargo clippy --lib --bins -- {{prod_flags}}
+    @just lint-prod
     @printf "\033[0;32m✅ Production code linting passed\033[0m\n"
-    @printf "\033[0;34m  → Pragmatic test linting...\033[0m\n"
-    cargo clippy --tests -- {{test_flags}}
+    @just lint-tests
     @printf "\033[0;32m✅ Test code linting passed\033[0m\n"
     @printf "\033[0;34mStep 4: Final format validation (FAST-FAIL)...\033[0m\n"
     cargo fmt --all -- --check
