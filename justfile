@@ -20,11 +20,13 @@
 # • HARDCODED ANSI escape sequences instead of variables (e.g., \033[0;34m)
 # • WHY: just does NOT expand color variables correctly across platforms
 # • Variables like {{BLUE}} would show as literal text instead of colors
+# • @echo commands show RAW ANSI codes instead of colors on some platforms
 # • Attempted solutions that FAILED:
 #   - Color variables with just expansion
 #   - Cross-platform color detection
+#   - @echo with ANSI codes (shows raw codes)
 #   - Dynamic color assignment
-# • WORKING SOLUTION: Direct ANSI codes in each echo statement
+# • WORKING SOLUTION: #!/usr/bin/env bash + echo (no @) for ALL color output
 # • Colors used:
 #   - \033[0;34m = Blue (info/steps)
 #   - \033[0;32m = Green (success)
@@ -35,10 +37,12 @@
 # 🪟 WINDOWS COMPATIBILITY QUIRKS:
 # ─────────────────────────────────────────────────────────────────────────────
 # • PowerShell does NOT understand bash syntax (if, ||, &&, etc.)
-# • Solution: #!/usr/bin/env bash shebang forces bash for complex recipes
-# • Simple recipes use @echo to avoid shell interpretation issues
+# • Windows just cannot find cygpath for #!/usr/bin/env bash shebangs
+# • Solution: #!/usr/bin/env bash shebang for ALL recipes with colors or logic
+# • CRITICAL: Use @just (not just) for sub-recipe calls to avoid shell issues
 # • Git Bash must be installed for full functionality
 # • The 'jb' alias should point to: just --shell 'C:\Program Files\Git\bin\bash.exe'
+# • Alternative: Use Git Bash terminal directly instead of PowerShell
 #
 # 🔄 TOOL INSTALLATION QUIRKS:
 # ─────────────────────────────────────────────────────────────────────────────
@@ -202,40 +206,39 @@ rust_components := "llvm-tools-preview miri"
 # ─────────────────────────────────────────────────────────────────────────────
 
 setup:
-    #!/usr/bin/env bash
-    echo "🔧 Universal Smart Development Environment Setup"
-    echo ""
-    echo "🦀 Installing Rust CLI tools (idempotent)"
-    echo ""
+    @echo "🔧 Universal Smart Development Environment Setup"
+    @echo ""
+    @echo "🦀 Installing Rust CLI tools (idempotent)"
+    @echo ""
     # Core tools - installed individually for Windows compatibility
-    just _install-if-missing cargo-binstall cargo-binstall
-    just _install-if-missing cargo-watch cargo-watch
-    just _install-if-missing cargo-nextest cargo-nextest
-    just _install-if-missing cargo-llvm-cov cargo-llvm-cov
-    just _install-if-missing cargo-deny cargo-deny
-    just _install-if-missing cargo-audit cargo-audit
-    just _install-if-missing cargo-outdated cargo-outdated
-    just _install-if-missing cargo-udeps cargo-udeps
-    just _install-if-missing cargo-machete cargo-machete
-    just _install-if-missing cargo-expand cargo-expand
-    just _install-if-missing cargo-geiger cargo-geiger
-    just _install-if-missing cargo-criterion cargo-criterion
-    just _install-if-missing cargo-tarpaulin cargo-tarpaulin
-    just _install-if-missing rust-script rust-script
-    echo ""
-    echo "🔧 Adding rustup components"
-    echo ""
+    @just _install-if-missing cargo-binstall cargo-binstall
+    @just _install-if-missing cargo-watch cargo-watch
+    @just _install-if-missing cargo-nextest cargo-nextest
+    @just _install-if-missing cargo-llvm-cov cargo-llvm-cov
+    @just _install-if-missing cargo-deny cargo-deny
+    @just _install-if-missing cargo-audit cargo-audit
+    @just _install-if-missing cargo-outdated cargo-outdated
+    @just _install-if-missing cargo-udeps cargo-udeps
+    @just _install-if-missing cargo-machete cargo-machete
+    @just _install-if-missing cargo-expand cargo-expand
+    @just _install-if-missing cargo-geiger cargo-geiger
+    @just _install-if-missing cargo-criterion cargo-criterion
+    @just _install-if-missing cargo-tarpaulin cargo-tarpaulin
+    @just _install-if-missing rust-script rust-script
+    @echo ""
+    @echo "🔧 Adding rustup components"
+    @echo ""
     # Rustup components for advanced features
-    just _install-component llvm-tools-preview
-    just _install-component miri
-    echo ""
-    echo "✅ Rust toolchain ready!"
-    echo ""
+    @just _install-component llvm-tools-preview
+    @just _install-component miri
+    @echo ""
+    @echo "✅ Rust toolchain ready!"
+    @echo ""
     # Platform-specific tools and git configuration
-    just setup-platform-tools
-    just setup-git-config
-    echo ""
-    echo "✅ Development environment ready!"
+    @just setup-platform-tools
+    @just setup-git-config
+    @echo ""
+    @echo "✅ Development environment ready!"
 
 # ─────────────────────────────────────────
 # Common clippy flags
@@ -248,7 +251,8 @@ test_flags   := common_flags + " -A clippy::unwrap_used -A clippy::expect_used"
 # Formatting & testing
 # ─────────────────────────────────────────
 fmt:
-    @echo "\033[0;34m📝 Formatting code…\033[0m"
+    #!/usr/bin/env bash
+    echo "\033[0;34m📝 Formatting code…\033[0m"
     CARGO_TERM_COLOR=always cargo fmt --all
 
 test:
@@ -262,7 +266,8 @@ test:
     fi
 
 doc:
-    @echo "\033[0;34m📚 Running documentation tests…\033[0m"
+    #!/usr/bin/env bash
+    echo "\033[0;34m📚 Running documentation tests…\033[0m"
     cargo test --workspace --doc --all-features
 
 coverage:
@@ -304,8 +309,9 @@ clean:
     cargo clean
 
 copy-binary profile:
+    #!/usr/bin/env bash
     cargo build --{{profile}}
-    @echo "\033[0;32m✅ Binary deployment complete\033[0m"
+    echo "\033[0;32m✅ Binary deployment complete\033[0m"
 
 # ─────────────────────────────────────────
 # Two-Phase Professional Workflow
@@ -422,28 +428,29 @@ phase2-ship:
 
 # Complete two-phase fast-fail workflow - perfect for rapid development
 go:
-    @echo "\033[0;34m🚀 Complete Two-Phase Fast-Fail Workflow\033[0m"
-    @echo "\033[1;33mFailing fast at ANY error in either phase...\033[0m"
-    @echo "========================================================"
-    @echo ""
+    #!/usr/bin/env bash
+    echo "\033[0;34m🚀 Complete Two-Phase Fast-Fail Workflow\033[0m"
+    echo "\033[1;33mFailing fast at ANY error in either phase...\033[0m"
+    echo "========================================================"
+    echo ""
 
     # PHASE 1: Comprehensive fast-fail testing and validation
-    @echo "\033[0;34m🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation\033[0m"
+    echo "\033[0;34m🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation\033[0m"
     just phase1-test
 
-    @echo ""
-    @echo "\033[0;32m✅ PHASE 1 COMPLETE - All validation passed!\033[0m"
-    @echo "\033[0;34m🚀 Starting PHASE 2: Build/Deploy...\033[0m"
-    @echo ""
+    echo ""
+    echo "\033[0;32m✅ PHASE 1 COMPLETE - All validation passed!\033[0m"
+    echo "\033[0;34m🚀 Starting PHASE 2: Build/Deploy...\033[0m"
+    echo ""
 
     # PHASE 2: Fast-fail build and deployment
-    @echo "\033[0;34m📦 PHASE 2: Fast-Fail Build & Deploy\033[0m"
+    echo "\033[0;34m📦 PHASE 2: Fast-Fail Build & Deploy\033[0m"
     just phase2-ship
 
-    @echo ""
-    @echo "\033[0;32m🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!\033[0m"
-    @echo "\033[0;32m✅ Phase 1: Testing & Validation\033[0m"
-    @echo "\033[0;32m✅ Phase 2: Build/Commit/Push/Deploy\033[0m"
+    echo ""
+    echo "\033[0;32m🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!\033[0m"
+    echo "\033[0;32m✅ Phase 1: Testing & Validation\033[0m"
+    echo "\033[0;32m✅ Phase 2: Build/Commit/Push/Deploy\033[0m"
 
 # ─────────────────────────────────────────
 # Analysis & Quality Assurance
@@ -480,8 +487,9 @@ audit:
 
 # Show current version
 version:
-    @echo "\033[0;34m📋 Current version:\033[0m"
-    @grep '^version' Cargo.toml | head -1
+    #!/usr/bin/env bash
+    echo "\033[0;34m📋 Current version:\033[0m"
+    grep '^version' Cargo.toml | head -1
 
 # Dependency optimization and cleanup
 deps-optimize:
@@ -635,13 +643,14 @@ benchmark-separate:
 
 # Compare both approaches
 benchmark-both:
-    @echo "\033[0;34m🏁 PERFORMANCE COMPARISON\033[0m"
-    @echo "\033[1;33mRunning both approaches for accurate measurement...\033[0m"
-    @echo ""
-    @echo "\033[0;34m=== APPROACH 1: Current (llvm-cov for all tests) ===\033[0m"
+    #!/usr/bin/env bash
+    echo "\033[0;34m🏁 PERFORMANCE COMPARISON\033[0m"
+    echo "\033[1;33mRunning both approaches for accurate measurement...\033[0m"
+    echo ""
+    echo "\033[0;34m=== APPROACH 1: Current (llvm-cov for all tests) ===\033[0m"
     just benchmark-current
-    @echo ""
-    @echo "\033[0;34m=== APPROACH 2: Separate (cargo test --doc) ===\033[0m"
+    echo ""
+    echo "\033[0;34m=== APPROACH 2: Separate (cargo test --doc) ===\033[0m"
     just benchmark-separate
-    @echo ""
-    @echo "\033[0;32m✅ Benchmark complete! Compare the times above.\033[0m"
+    echo ""
+    echo "\033[0;32m✅ Benchmark complete! Compare the times above.\033[0m"
