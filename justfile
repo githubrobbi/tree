@@ -375,8 +375,21 @@ _check-path:
     if echo "$PATH" | grep -q "$HOME_BIN"; then
         # Special check for Windows tree command conflict
         if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
-            # Check if Windows system tree.exe takes precedence
-            WHICH_TREE=$(which tree 2>/dev/null || echo "")
+            # Check if Windows system tree.exe takes precedence (try multiple methods)
+            WHICH_TREE=""
+            if command -v where >/dev/null 2>&1; then
+                WHICH_TREE=$(where tree 2>/dev/null | head -1 || echo "")
+            elif command -v which >/dev/null 2>&1; then
+                WHICH_TREE=$(which tree 2>/dev/null || echo "")
+            else
+                # Fallback: check common locations
+                if [[ -f "/c/Windows/System32/tree.exe" ]]; then
+                    WHICH_TREE="/c/Windows/System32/tree.exe"
+                elif [[ -f "C:\\Windows\\System32\\tree.exe" ]]; then
+                    WHICH_TREE="C:\\Windows\\System32\\tree.exe"
+                fi
+            fi
+
             if [[ "$WHICH_TREE" == *"System32"* ]] || [[ "$WHICH_TREE" == *"system32"* ]]; then
                 printf "\033[1;33m⚠️  Windows system tree.exe takes precedence over your custom tree.exe\033[0m\n"
                 printf "\033[0;34m💡 Solutions:\033[0m\n"
@@ -671,6 +684,7 @@ setup-platform-tools:
         command -v choco >/dev/null || powershell -NoLogo -NoProfile -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
         command -v just >/dev/null || choco install just -y
         command -v git  >/dev/null || choco install git  -y
+        command -v where >/dev/null || choco install where -y
     else
         echo "  → Linux detected"
         if command -v apt-get >/dev/null; then
