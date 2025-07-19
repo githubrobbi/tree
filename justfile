@@ -373,7 +373,26 @@ _check-path:
 
     # Check if ~/bin is in PATH
     if echo "$PATH" | grep -q "$HOME_BIN"; then
-        printf "\033[0;32m✅ ~/bin is in your PATH - you can run 'tree' from anywhere!\033[0m\n"
+        # Special check for Windows tree command conflict
+        if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
+            # Check if Windows system tree.exe takes precedence
+            WHICH_TREE=$(which tree 2>/dev/null || echo "")
+            if [[ "$WHICH_TREE" == *"System32"* ]] || [[ "$WHICH_TREE" == *"system32"* ]]; then
+                printf "\033[1;33m⚠️  Windows system tree.exe takes precedence over your custom tree.exe\033[0m\n"
+                printf "\033[0;34m💡 Solutions:\033[0m\n"
+                echo "  1. Use full path: ~/bin/tree.exe"
+                echo "  2. Create an alias: alias tree='~/bin/tree.exe'"
+                echo "  3. Move ~/bin BEFORE system32 in PATH (advanced)"
+                echo "  4. Rename binary to 'mytree.exe' to avoid conflict"
+                echo ""
+                printf "\033[0;34m🔍 Current tree command: $WHICH_TREE\033[0m\n"
+                printf "\033[0;32m📍 Your custom tree: ~/bin/tree.exe\033[0m\n"
+            else
+                printf "\033[0;32m✅ ~/bin is in your PATH and tree command works correctly!\033[0m\n"
+            fi
+        else
+            printf "\033[0;32m✅ ~/bin is in your PATH - you can run 'tree' from anywhere!\033[0m\n"
+        fi
     else
         printf "\033[1;33m⚠️  ~/bin is NOT in your PATH\033[0m\n"
         printf "\033[0;34m💡 To use 'tree' from anywhere, add ~/bin to your PATH:\033[0m\n"
@@ -389,12 +408,15 @@ _check-path:
             echo "For Windows:"
             echo "  1. Open System Properties → Advanced → Environment Variables"
             echo "  2. Edit your user PATH variable"
-            echo "  3. Add: %USERPROFILE%\\bin"
+            echo "  3. Add: %USERPROFILE%\\bin AT THE BEGINNING"
             echo "  4. Restart your terminal"
             echo ""
+            echo "⚠️  IMPORTANT: Add ~/bin BEFORE system paths to override Windows tree.exe"
+            echo ""
             echo "Or via PowerShell (run as user):"
-            echo "  \$env:PATH += \";\$env:USERPROFILE\\bin\""
-            echo "  [Environment]::SetEnvironmentVariable(\"PATH\", \$env:PATH, \"User\")"
+            echo "  \$userPath = [Environment]::GetEnvironmentVariable(\"PATH\", \"User\")"
+            echo "  \$newPath = \"\$env:USERPROFILE\\bin;\$userPath\""
+            echo "  [Environment]::SetEnvironmentVariable(\"PATH\", \$newPath, \"User\")"
         else
             # Linux
             echo "For Linux (add to ~/.bashrc or ~/.zshrc):"
