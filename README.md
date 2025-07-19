@@ -50,7 +50,7 @@ tree --help
 Add to your `Cargo.toml`:
 ```toml
 [dependencies]
-tree = "0.1.0"
+tree = "0.1.46"
 ```
 
 Use in your Rust code:

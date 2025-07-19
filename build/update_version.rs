@@ -1,6 +1,6 @@
 #!/usr/bin/env rust-script
-//! Version update script for Tree CLI project
-//! Updates version in Cargo.toml and README.md
+//! Dynamic version update script for Rust projects
+//! Updates version in Cargo.toml and README.md with dynamic package name detection
 //! Usage: ./build/update_version.rs [patch|minor|major]
 
 use std::fs;
@@ -10,11 +10,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     let increment_type = args.get(1).map(|s| s.as_str()).unwrap_or("patch");
 
-    println!("🔄 Version update for Tree CLI project");
-    println!("📋 Increment type: {}", increment_type);
-
-    // Step 1: Get current version from Cargo.toml
+    // Step 1: Get package name and current version from Cargo.toml
+    let package_name = get_package_name()?;
     let current_version = get_current_version()?;
+
+    println!("🔄 Version update for {} project", package_name);
+    println!("📋 Increment type: {}", increment_type);
     println!("📍 Current version: {}", current_version);
 
     // Step 2: Calculate new version
@@ -23,17 +24,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Step 3: Update files with new version
     update_cargo_toml(&current_version, &new_version)?;
-    update_readme(&current_version, &new_version)?;
-    
+    update_readme(&package_name, &current_version, &new_version)?;
+
     println!("✅ All versions updated successfully!");
-    println!("📦 Tree CLI is now at version: {}", new_version);
-    
+    println!("📦 {} is now at version: {}", package_name, new_version);
+
     Ok(())
+}
+
+fn get_package_name() -> Result<String, Box<dyn std::error::Error>> {
+    let content = fs::read_to_string("Cargo.toml")?;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("name") && trimmed.contains("=") {
+            if let Some(start) = trimmed.find('"') {
+                if let Some(end) = trimmed.rfind('"') {
+                    if start < end {
+                        return Ok(trimmed[start + 1..end].to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    Err("Could not find package name in Cargo.toml".into())
 }
 
 fn get_current_version() -> Result<String, Box<dyn std::error::Error>> {
     let content = fs::read_to_string("Cargo.toml")?;
-    
+
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("version") && trimmed.contains("=") {
@@ -46,7 +66,7 @@ fn get_current_version() -> Result<String, Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     Err("Could not find version in Cargo.toml".into())
 }
 
@@ -83,19 +103,25 @@ fn update_cargo_toml(current: &str, new: &str) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn update_readme(current: &str, new: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn update_readme(package_name: &str, current: &str, new: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Updating README.md...");
-    
+
     if let Ok(content) = fs::read_to_string("README.md") {
         let updated = content
+            // Version tags (e.g., v0.1.44)
             .replace(&format!("v{}", current), &format!("v{}", new))
-            .replace(&format!("version {}", current), &format!("version {}", new));
-        
+            // Version references (e.g., version 0.1.44)
+            .replace(&format!("version {}", current), &format!("version {}", new))
+            // Dependency declarations (e.g., tree = "0.1.44")
+            .replace(&format!("{} = \"{}\"", package_name, current), &format!("{} = \"{}\"", package_name, new))
+            // Alternative dependency format with version key (e.g., tree = { version = "0.1.44" })
+            .replace(&format!("version = \"{}\"", current), &format!("version = \"{}\"", new));
+
         fs::write("README.md", updated)?;
-        println!("✅ README.md updated");
+        println!("✅ README.md updated (package: {}, {} → {})", package_name, current, new);
     } else {
         println!("⚠️  README.md not found, skipping");
     }
-    
+
     Ok(())
 }
