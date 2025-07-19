@@ -1,4 +1,75 @@
 # Tree – Modern Rust Development Workflow (cross-platform & Git-Bash-friendly)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📋 IMPORTANT: DESIGN DECISIONS & QUIRKS - DO NOT REVERT WITHOUT UNDERSTANDING
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This justfile has been carefully crafted to work across Windows, macOS, and Linux
+# with specific workarounds for cross-platform compatibility. Please read before
+# making changes to avoid breaking functionality.
+#
+# 🔧 SHELL CONFIGURATION QUIRKS:
+# ─────────────────────────────────────────────────────────────────────────────
+# • set shell := ["bash", "-euo", "pipefail", "-c"] - CRITICAL for fast-fail behavior
+# • set windows-shell := ["powershell.exe", ...] - Fallback for Windows, but problematic
+# • Individual recipes use #!/usr/bin/env bash shebang to force bash execution
+# • This hybrid approach ensures bash syntax works even on Windows PowerShell
+#
+# 🎨 COLOR SYSTEM QUIRKS:
+# ─────────────────────────────────────────────────────────────────────────────
+# • HARDCODED ANSI escape sequences instead of variables (e.g., \033[0;34m)
+# • WHY: just does NOT expand color variables correctly across platforms
+# • Variables like {{BLUE}} would show as literal text instead of colors
+# • Attempted solutions that FAILED:
+#   - Color variables with just expansion
+#   - Cross-platform color detection
+#   - Dynamic color assignment
+# • WORKING SOLUTION: Direct ANSI codes in each echo statement
+# • Colors used:
+#   - \033[0;34m = Blue (info/steps)
+#   - \033[0;32m = Green (success)
+#   - \033[1;33m = Yellow (warnings)
+#   - \033[0;31m = Red (errors)
+#   - \033[0m = Reset
+#
+# 🪟 WINDOWS COMPATIBILITY QUIRKS:
+# ─────────────────────────────────────────────────────────────────────────────
+# • PowerShell does NOT understand bash syntax (if, ||, &&, etc.)
+# • Solution: #!/usr/bin/env bash shebang forces bash for complex recipes
+# • Simple recipes use @echo to avoid shell interpretation issues
+# • Git Bash must be installed for full functionality
+# • The 'jb' alias should point to: just --shell 'C:\Program Files\Git\bin\bash.exe'
+#
+# 🔄 TOOL INSTALLATION QUIRKS:
+# ─────────────────────────────────────────────────────────────────────────────
+# • Individual just calls instead of bash loops for Windows compatibility
+# • Each tool installation is isolated to prevent cascade failures
+# • Idempotent design: tools are only installed if missing
+# • Uses cargo-binstall when available for faster installation
+#
+# 🚀 WORKFLOW DESIGN DECISIONS:
+# ─────────────────────────────────────────────────────────────────────────────
+# • Two-phase workflow (phase1-test + phase2-ship) for professional development
+# • Fast-fail behavior: ANY error stops the entire workflow immediately
+# • Minimal recompilation: doc tests run separately to avoid duplicate compilation
+# • Coverage-first approach: llvm-cov provides both testing and coverage
+#
+# ⚠️  DO NOT CHANGE WITHOUT TESTING ON ALL PLATFORMS:
+# ─────────────────────────────────────────────────────────────────────────────
+# • Windows PowerShell + Git Bash
+# • macOS Terminal + Homebrew
+# • Linux (Ubuntu/Debian, RHEL/CentOS, Arch)
+# • Both with and without color support (NO_COLOR=1)
+#
+# 🔍 TESTING CHECKLIST BEFORE CHANGES:
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Run 'just setup' on all platforms
+# 2. Run 'just go' end-to-end workflow
+# 3. Test with NO_COLOR=1 environment variable
+# 4. Verify colors display correctly (not as raw escape codes)
+# 5. Ensure fast-fail behavior works (workflow stops on first error)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────
 # Global shell (strict-mode)
@@ -9,12 +80,26 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 # ─────────────────────────────────────────
 # Colour support (auto-disables if NO_COLOR)
 # ─────────────────────────────────────────
+# NOTE: These environment variables help tools display colors correctly
 export FORCE_COLOR      := "1"
 export CLICOLOR_FORCE   := "1"
 export TERM             := "xterm-256color"
 export COLORTERM        := "truecolor"
 export CARGO_TERM_COLOR := "always"
 
+# ⚠️  LEGACY COLOR VARIABLES - DO NOT USE IN RECIPES!
+# ─────────────────────────────────────────────────────────────────────────────
+# These variables are kept for reference but are NOT used in recipes because
+# just does NOT expand them correctly across platforms. Instead, we use
+# hardcoded ANSI escape sequences directly in echo statements.
+#
+# FAILED ATTEMPTS:
+# • {{GREEN}} expansion shows literal "{{GREEN}}" instead of color codes
+# • Variable substitution inconsistent between Windows/Unix
+# • Color detection logic works but expansion fails
+#
+# WORKING SOLUTION: Direct ANSI codes like \033[0;32m in each echo
+# ─────────────────────────────────────────────────────────────────────────────
 GREEN  := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;32m' }
 BLUE   := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[0;34m' }
 YELLOW := if env_var_or_default("NO_COLOR", "") == "1" { "" } else { '\033[1;33m' }
@@ -62,10 +147,20 @@ default:
 # ─────────────────────────────────────────
 # Helper recipes (prefixed with _)
 # ─────────────────────────────────────────
+# 🔧 CRITICAL: These recipes use #!/usr/bin/env bash shebang
+# WHY: Windows PowerShell cannot parse bash syntax like:
+# • if ! command -v tool
+# • command && other_command
+# • variable assignments in conditionals
+# SOLUTION: Force bash execution even on Windows
+# ─────────────────────────────────────────────────────────────────────────────
+
 _install-if-missing TOOL CRATE:
     #!/usr/bin/env bash
+    # Idempotent tool installation - only installs if missing
     if ! command -v {{TOOL}} >/dev/null 2>&1; then
         echo "📦 Installing {{CRATE}} …"
+        # Prefer cargo-binstall for speed, fallback to cargo install
         if command -v cargo-binstall >/dev/null 2>&1; then
             cargo binstall {{CRATE}} --no-confirm --quiet
         else
@@ -77,6 +172,7 @@ _install-if-missing TOOL CRATE:
 
 _install-component COMPONENT:
     #!/usr/bin/env bash
+    # Idempotent rustup component installation
     if ! rustup component list --installed | grep -q "^{{COMPONENT}} "; then
         echo "📦 Adding rustup component {{COMPONENT}} …"
         rustup component add {{COMPONENT}}
@@ -97,11 +193,21 @@ rust_components := "llvm-tools-preview miri"
 # ─────────────────────────────────────────
 # Universal setup (idempotent + fast-fail)
 # ─────────────────────────────────────────
+# 🔧 DESIGN DECISION: Individual just calls instead of bash loops
+# WHY: Windows PowerShell compatibility + better error isolation
+# ALTERNATIVE THAT FAILED: tools="list"; for t in $tools; do just _install $t; done
+# PROBLEM: PowerShell doesn't understand bash for-loop syntax
+# SOLUTION: Explicit individual calls - more verbose but cross-platform
+# BENEFIT: If one tool fails, you know exactly which one
+# ─────────────────────────────────────────────────────────────────────────────
+
 setup:
-    @echo "🔧 Universal Smart Development Environment Setup"
-    @echo ""
-    @echo "🦀 Installing Rust CLI tools (idempotent)"
-    @echo ""
+    #!/usr/bin/env bash
+    echo "🔧 Universal Smart Development Environment Setup"
+    echo ""
+    echo "🦀 Installing Rust CLI tools (idempotent)"
+    echo ""
+    # Core tools - installed individually for Windows compatibility
     just _install-if-missing cargo-binstall cargo-binstall
     just _install-if-missing cargo-watch cargo-watch
     just _install-if-missing cargo-nextest cargo-nextest
@@ -116,18 +222,20 @@ setup:
     just _install-if-missing cargo-criterion cargo-criterion
     just _install-if-missing cargo-tarpaulin cargo-tarpaulin
     just _install-if-missing rust-script rust-script
-    @echo ""
-    @echo "🔧 Adding rustup components"
-    @echo ""
+    echo ""
+    echo "🔧 Adding rustup components"
+    echo ""
+    # Rustup components for advanced features
     just _install-component llvm-tools-preview
     just _install-component miri
-    @echo ""
-    @echo "✅ Rust toolchain ready!"
-    @echo ""
+    echo ""
+    echo "✅ Rust toolchain ready!"
+    echo ""
+    # Platform-specific tools and git configuration
     just setup-platform-tools
     just setup-git-config
-    @echo ""
-    @echo "✅ Development environment ready!"
+    echo ""
+    echo "✅ Development environment ready!"
 
 # ─────────────────────────────────────────
 # Common clippy flags
@@ -202,6 +310,20 @@ copy-binary profile:
 # ─────────────────────────────────────────
 # Two-Phase Professional Workflow
 # ─────────────────────────────────────────
+# 🚀 DESIGN PHILOSOPHY: Separate testing from deployment
+# PHASE 1: Comprehensive testing, linting, validation (can run repeatedly)
+# PHASE 2: Version bump, build, commit, push (run once when ready to ship)
+#
+# 🔥 FAST-FAIL BEHAVIOR: Any error in any step stops the entire workflow
+# WHY: Prevents cascading failures and wasted time on broken code
+# HOW: bash -euo pipefail ensures any command failure stops execution
+#
+# 🔄 MINIMAL RECOMPILATION STRATEGY:
+# • Clean build artifacts first (prevents cross-project contamination)
+# • Use llvm-cov for both testing AND coverage (single compilation)
+# • Run doc tests separately (avoids duplicate compilation)
+# • Clippy reuses compilation artifacts from testing phase
+# ─────────────────────────────────────────────────────────────────────────────
 
 # PHASE 1: Code & Extensive Testing (Fast-Fail)
 phase1-test:
@@ -425,6 +547,19 @@ bench:
 # ─────────────────────────────────────────
 # Platform tools (macOS / Linux / Windows-Git-Bash)
 # ─────────────────────────────────────────
+# 🌍 CROSS-PLATFORM COMPATIBILITY STRATEGY:
+# • Detect OS using $OSTYPE and $WINDIR environment variables
+# • Use appropriate package managers: brew (macOS), apt/yum/pacman (Linux), choco (Windows)
+# • Install Git Bash on Windows for consistent shell experience
+# • Graceful fallbacks when package managers aren't available
+#
+# 🪟 WINDOWS SPECIFIC NOTES:
+# • Requires Git for Windows for bash shell support
+# • Uses Chocolatey for package management
+# • PowerShell execution policy may need adjustment
+# • Git Bash provides Unix-like environment on Windows
+# ─────────────────────────────────────────────────────────────────────────────
+
 setup-platform-tools:
     #!/usr/bin/env bash
     echo "🖥️  Checking platform-specific tools…"
