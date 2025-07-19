@@ -133,7 +133,8 @@ default:
     @echo "  just lint-prod    # Ultra-strict production linting"
     @echo "  just lint-tests   # Pragmatic test linting"
     @echo "  just build        # Build release binary"
-    @echo "  just deploy       # Copy binary to deployment"
+    @echo "  just install      # Install binary to ~/bin"
+    @echo "  just deploy       # Deploy binary (alias for install)"
     @echo ""
     @echo "🔧 Development:"
     @echo "  just dev          # Watch mode with testing"
@@ -298,8 +299,14 @@ lint-tests:
 build:
     cargo build --release
 
+# Deploy release binary to ~/bin (cross-platform)
 deploy:
     just copy-binary release
+
+# Install release binary to ~/bin (build + copy to ~/bin)
+install:
+    @printf "\033[0;34m🚀 Installing tree binary to ~/bin...\033[0m\n"
+    @just copy-binary release
 
 dev:
     #!/usr/bin/env bash
@@ -319,7 +326,86 @@ clean:
 copy-binary profile:
     #!/usr/bin/env bash
     cargo build --{{profile}}
-    echo "\033[0;32m✅ Binary deployment complete\033[0m"
+
+    # Create ~/bin directory if it doesn't exist
+    mkdir -p ~/bin
+
+    # Get the actual target directory from cargo metadata
+    TARGET_DIR=$(cargo metadata --format-version 1 --no-deps | grep -o '"target_directory":"[^"]*"' | cut -d'"' -f4)
+
+    # Determine binary name and extension based on OS
+    if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
+        BINARY_NAME="tree.exe"
+    else
+        BINARY_NAME="tree"
+    fi
+
+    # Construct the full path to the binary
+    SOURCE_PATH="$TARGET_DIR/{{profile}}/$BINARY_NAME"
+
+    # Verify the binary exists
+    if [[ ! -f "$SOURCE_PATH" ]]; then
+        printf "\033[0;31m❌ Binary not found at: $SOURCE_PATH\033[0m\n"
+        printf "\033[1;33m💡 Build may have failed or binary name mismatch\033[0m\n"
+        exit 1
+    fi
+
+    # Copy binary to ~/bin
+    cp "$SOURCE_PATH" ~/bin/
+
+    # Set executable permissions on Unix-like systems
+    if [[ "$OSTYPE" != "msys"* ]] && [[ "$OSTYPE" != "cygwin"* ]] && [[ -z "$WINDIR" ]]; then
+        chmod +x ~/bin/$BINARY_NAME
+    fi
+
+    printf "\033[0;32m✅ Binary installed to ~/bin/$BINARY_NAME\033[0m\n"
+    printf "\033[0;34m📁 Source: $SOURCE_PATH\033[0m\n"
+
+    # Check if ~/bin is in PATH and provide guidance if not
+    just _check-path
+
+
+
+# Helper recipe to check if ~/bin is in PATH and provide setup guidance
+_check-path:
+    #!/usr/bin/env bash
+    HOME_BIN="$HOME/bin"
+
+    # Check if ~/bin is in PATH
+    if echo "$PATH" | grep -q "$HOME_BIN"; then
+        printf "\033[0;32m✅ ~/bin is in your PATH - you can run 'tree' from anywhere!\033[0m\n"
+    else
+        printf "\033[1;33m⚠️  ~/bin is NOT in your PATH\033[0m\n"
+        printf "\033[0;34m💡 To use 'tree' from anywhere, add ~/bin to your PATH:\033[0m\n"
+        echo ""
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            echo "For macOS (add to ~/.zshrc or ~/.bash_profile):"
+            echo "  echo 'export PATH=\"\$HOME/bin:\$PATH\"' >> ~/.zshrc"
+            echo "  source ~/.zshrc"
+        elif [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
+            # Windows
+            echo "For Windows:"
+            echo "  1. Open System Properties → Advanced → Environment Variables"
+            echo "  2. Edit your user PATH variable"
+            echo "  3. Add: %USERPROFILE%\\bin"
+            echo "  4. Restart your terminal"
+            echo ""
+            echo "Or via PowerShell (run as user):"
+            echo "  \$env:PATH += \";\$env:USERPROFILE\\bin\""
+            echo "  [Environment]::SetEnvironmentVariable(\"PATH\", \$env:PATH, \"User\")"
+        else
+            # Linux
+            echo "For Linux (add to ~/.bashrc or ~/.zshrc):"
+            echo "  echo 'export PATH=\"\$HOME/bin:\$PATH\"' >> ~/.bashrc"
+            echo "  source ~/.bashrc"
+        fi
+
+        echo ""
+        printf "\033[0;34m🔄 After updating PATH, restart your terminal or run 'source' command\033[0m\n"
+        printf "\033[0;32m📍 Current binary location: ~/bin/tree\033[0m\n"
+    fi
 
 # ─────────────────────────────────────────
 # Two-Phase Professional Workflow
