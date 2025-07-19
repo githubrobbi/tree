@@ -333,98 +333,81 @@ copy-binary profile:
 
 # PHASE 1: Code & Extensive Testing (Fast-Fail)
 phase1-test:
-    #!/usr/bin/env bash
-    echo "\033[0;34m🧪 PHASE 1: Code & Extensive Testing (FAST-FAIL)\033[0m"
-    echo "\033[1;33mRunning MOST extensive tests - STOPPING at FIRST failure...\033[0m"
-    echo "========================================================"
-    echo ""
-
-    # Step 1: Clean build artifacts (prevent cross-project contamination)
-    echo "\033[0;34mStep 1: Cleaning build artifacts...\033[0m"
+    @printf "\033[0;34m🧪 PHASE 1: Code & Extensive Testing (FAST-FAIL)\033[0m\n"
+    @printf "\033[1;33mRunning MOST extensive tests - STOPPING at FIRST failure...\033[0m\n"
+    @echo "========================================================"
+    @echo ""
+    @printf "\033[0;34mStep 1: Cleaning build artifacts...\033[0m\n"
     cargo clean
-    echo "\033[0;32m✅ Build artifacts cleaned\033[0m"
-
-    # Step 2: Auto-formatting
-    echo "\033[0;34mStep 2: Auto-formatting code...\033[0m"
+    @printf "\033[0;32m✅ Build artifacts cleaned\033[0m\n"
+    @printf "\033[0;34mStep 2: Auto-formatting code...\033[0m\n"
     cargo fmt --all
+    @printf "\033[0;34mStep 3: Comprehensive compilation and validation (FAST-FAIL)...\033[0m\n"
+    @printf "\033[0;34m  → Running unit & integration tests with coverage report (optimized)...\033[0m\n"
+    @just _run-tests-with-coverage
+    @printf "\033[0;32m✅ Unit & integration tests passed, coverage report generated\033[0m\n"
+    @printf "\033[0;32m📁 Coverage report: target/llvm-cov/html/index.html\033[0m\n"
+    @printf "\033[0;34m  → Running documentation tests only...\033[0m\n"
+    cargo test --workspace --doc --all-features
+    @printf "\033[0;32m✅ Documentation tests passed\033[0m\n"
+    @printf "\033[0;34m  → Ultra-strict production linting...\033[0m\n"
+    cargo clippy --lib --bins -- {{prod_flags}}
+    @printf "\033[0;32m✅ Production code linting passed\033[0m\n"
+    @printf "\033[0;34m  → Pragmatic test linting...\033[0m\n"
+    cargo clippy --tests -- {{test_flags}}
+    @printf "\033[0;32m✅ Test code linting passed\033[0m\n"
+    @printf "\033[0;34mStep 4: Final format validation (FAST-FAIL)...\033[0m\n"
+    cargo fmt --all -- --check
+    @echo ""
+    @printf "\033[0;32m✅ PHASE 1 FAST-FAIL COMPLETE: All extensive tests passed, code ready for commit!\033[0m\n"
+    @printf "\033[0;34m💡 Next: Run 'just phase2-ship' when ready to build/commit/push\033[0m\n"
 
-    # Step 3: Comprehensive compilation and validation (FAST-FAIL)
-    echo "\033[0;34mStep 3: Comprehensive compilation and validation (FAST-FAIL)...\033[0m"
-
-    # 3a: Build with coverage and run unit/integration tests with report (optimized)
-    echo "\033[0;34m  → Running unit & integration tests with coverage report (optimized)...\033[0m"
+# Helper recipe for test execution with coverage
+_run-tests-with-coverage:
+    #!/usr/bin/env bash
     if command -v cargo-nextest >/dev/null 2>&1; then
-        echo "\033[0;34m    Using nextest for blazing-fast test execution...\033[0m"
+        printf "\033[0;34m    Using nextest for blazing-fast test execution...\033[0m\n"
         cargo llvm-cov nextest --workspace --all-features --html
     else
-        echo "\033[1;33m    Using standard test runner...\033[0m"
+        printf "\033[1;33m    Using standard test runner...\033[0m\n"
         cargo llvm-cov test --workspace --all-features --all-targets --html
     fi
-    echo "\033[0;32m✅ Unit & integration tests passed, coverage report generated\033[0m"
-    echo "\033[0;32m📁 Coverage report: target/llvm-cov/html/index.html\033[0m"
-
-    # 3b: Run ONLY doc tests (optimal performance - minimal recompilation)
-    echo "\033[0;34m  → Running documentation tests only...\033[0m"
-    cargo test --workspace --doc --all-features
-    echo "\033[0;32m✅ Documentation tests passed\033[0m"
-
-    # 3c: Production linting (reuses compilation artifacts)
-    echo "\033[0;34m  → Ultra-strict production linting...\033[0m"
-    cargo clippy --lib --bins -- {{prod_flags}}
-    echo "\033[0;32m✅ Production code linting passed\033[0m"
-
-    # 3d: Test linting (reuses compilation artifacts)
-    echo "\033[0;34m  → Pragmatic test linting...\033[0m"
-    cargo clippy --tests -- {{test_flags}}
-    echo "\033[0;32m✅ Test code linting passed\033[0m"
-
-    # Step 4: Format validation (final check) (FAST-FAIL)
-    echo "\033[0;34mStep 4: Final format validation (FAST-FAIL)...\033[0m"
-    cargo fmt --all -- --check
-
-    echo ""
-    echo "\033[0;32m✅ PHASE 1 FAST-FAIL COMPLETE: All extensive tests passed, code ready for commit!\033[0m"
-    echo "\033[0;34m💡 Next: Run 'just phase2-ship' when ready to build/commit/push\033[0m"
 
 # PHASE 2: Version/Build/Deploy (Professional Grade)
 phase2-ship:
-    #!/usr/bin/env bash
-    echo "\033[0;34m🚀 PHASE 2: Version/Build/Deploy (Post-Testing)\033[0m"
-    echo "\033[1;33mAssumes Phase 1 completed: format ✅ clippy ✅ compile ✅ tests ✅\033[0m"
-    echo "========================================================"
-    echo ""
+    @printf "\033[0;34m🚀 PHASE 2: Version/Build/Deploy (Post-Testing)\033[0m\n"
+    @printf "\033[1;33mAssumes Phase 1 completed: format ✅ clippy ✅ compile ✅ tests ✅\033[0m\n"
+    @echo "========================================================"
+    @echo ""
+    @printf "\033[0;34mStep 1: Version increment...\033[0m\n"
+    @just _version-increment
+    @printf "\033[0;34mStep 2: Building release binary...\033[0m\n"
+    cargo build --release
+    @printf "\033[0;34mStep 3: Copy binary to deployment location...\033[0m\n"
+    @just copy-binary release
+    @printf "\033[0;34mStep 4: Adding all changes to staging area...\033[0m\n"
+    git add .
+    @printf "\033[0;34mStep 5: Creating auto-generated commit...\033[0m\n"
+    @just _git-commit
+    @printf "\033[0;34mStep 6: Syncing with remote and pushing...\033[0m\n"
+    git pull origin main --rebase
+    git push origin main
+    @echo ""
+    @printf "\033[0;32m✅ PHASE 2 COMPLETE: Version incremented, built, deployed, committed, and pushed!\033[0m\n"
 
-    # Step 1: Version increment
-    echo "\033[0;34mStep 1: Version increment...\033[0m"
+# Helper recipe for version increment
+_version-increment:
+    #!/usr/bin/env bash
     if [ -f "./build/update_version.rs" ]; then
         ./build/update_version.rs patch
     else
-        echo "\033[1;33m⚠️  Version script not found, skipping version increment\033[0m"
+        printf "\033[1;33m⚠️  Version script not found, skipping version increment\033[0m\n"
     fi
 
-    # Step 2: Build with new version
-    echo "\033[0;34mStep 2: Building release binary...\033[0m"
-    cargo build --release
-
-    # Step 3: Copy binary to deployment location
-    echo "\033[0;34mStep 3: Copy binary to deployment location...\033[0m"
-    just copy-binary release
-
-    # Step 4: Add all changes to git
-    echo "\033[0;34mStep 4: Adding all changes to staging area...\033[0m"
-    git add .
-
-    # Step 5: Create auto-generated commit
-    echo "\033[0;34mStep 5: Creating auto-generated commit...\033[0m"
+# Helper recipe for git commit
+_git-commit:
+    #!/usr/bin/env bash
     git commit -m "chore: release v$(grep '^version' Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/') - comprehensive testing complete [auto-commit]"
-
-    # Step 6: Sync with remote and push
-    echo "\033[0;34mStep 6: Syncing with remote and pushing...\033[0m"
-    git pull origin main --rebase
-    git push origin main
-
-    echo ""
-    echo "\033[0;32m✅ PHASE 2 COMPLETE: Version incremented, built, deployed, committed, and pushed!\033[0m"
 
 # Complete two-phase fast-fail workflow - perfect for rapid development
 go:
