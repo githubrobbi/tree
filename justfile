@@ -428,29 +428,22 @@ phase2-ship:
 
 # Complete two-phase fast-fail workflow - perfect for rapid development
 go:
-    #!/usr/bin/env bash
-    echo "\033[0;34m🚀 Complete Two-Phase Fast-Fail Workflow\033[0m"
-    echo "\033[1;33mFailing fast at ANY error in either phase...\033[0m"
-    echo "========================================================"
-    echo ""
-
-    # PHASE 1: Comprehensive fast-fail testing and validation
-    echo "\033[0;34m🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation\033[0m"
-    just phase1-test
-
-    echo ""
-    echo "\033[0;32m✅ PHASE 1 COMPLETE - All validation passed!\033[0m"
-    echo "\033[0;34m🚀 Starting PHASE 2: Build/Deploy...\033[0m"
-    echo ""
-
-    # PHASE 2: Fast-fail build and deployment
-    echo "\033[0;34m📦 PHASE 2: Fast-Fail Build & Deploy\033[0m"
-    just phase2-ship
-
-    echo ""
-    echo "\033[0;32m🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!\033[0m"
-    echo "\033[0;32m✅ Phase 1: Testing & Validation\033[0m"
-    echo "\033[0;32m✅ Phase 2: Build/Commit/Push/Deploy\033[0m"
+    @printf "\033[0;34m🚀 Complete Two-Phase Fast-Fail Workflow\033[0m\n"
+    @printf "\033[1;33mFailing fast at ANY error in either phase...\033[0m\n"
+    @echo "========================================================"
+    @echo ""
+    @printf "\033[0;34m🧪 PHASE 1: Comprehensive Fast-Fail Testing & Validation\033[0m\n"
+    @just phase1-test
+    @echo ""
+    @printf "\033[0;32m✅ PHASE 1 COMPLETE - All validation passed!\033[0m\n"
+    @printf "\033[0;34m🚀 Starting PHASE 2: Build/Deploy...\033[0m\n"
+    @echo ""
+    @printf "\033[0;34m📦 PHASE 2: Fast-Fail Build & Deploy\033[0m\n"
+    @just phase2-ship
+    @echo ""
+    @printf "\033[0;32m🎉 COMPLETE TWO-PHASE FAST-FAIL WORKFLOW FINISHED!\033[0m\n"
+    @printf "\033[0;32m✅ Phase 1: Testing & Validation\033[0m\n"
+    @printf "\033[0;32m✅ Phase 2: Build/Commit/Push/Deploy\033[0m\n"
 
 # ─────────────────────────────────────────
 # Analysis & Quality Assurance
