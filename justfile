@@ -21,12 +21,14 @@
 # • WHY: just does NOT expand color variables correctly across platforms
 # • Variables like {{BLUE}} would show as literal text instead of colors
 # • @echo commands show RAW ANSI codes instead of colors on some platforms
+# • Comments with ANSI codes get displayed as raw escape sequences
 # • Attempted solutions that FAILED:
 #   - Color variables with just expansion
 #   - Cross-platform color detection
 #   - @echo with ANSI codes (shows raw codes)
+#   - #!/usr/bin/env bash + echo (shell context issues)
 #   - Dynamic color assignment
-# • WORKING SOLUTION: #!/usr/bin/env bash + echo (no @) for ALL color output
+# • WORKING SOLUTION: @printf with \n for ALL color output + no color comments
 # • Colors used:
 #   - \033[0;34m = Blue (info/steps)
 #   - \033[0;32m = Green (success)
@@ -210,7 +212,6 @@ setup:
     @echo ""
     @echo "🦀 Installing Rust CLI tools (idempotent)"
     @echo ""
-    # Core tools - installed individually for Windows compatibility
     @just _install-if-missing cargo-binstall cargo-binstall
     @just _install-if-missing cargo-watch cargo-watch
     @just _install-if-missing cargo-nextest cargo-nextest
@@ -228,13 +229,11 @@ setup:
     @echo ""
     @echo "🔧 Adding rustup components"
     @echo ""
-    # Rustup components for advanced features
     @just _install-component llvm-tools-preview
     @just _install-component miri
     @echo ""
     @echo "✅ Rust toolchain ready!"
     @echo ""
-    # Platform-specific tools and git configuration
     @just setup-platform-tools
     @just setup-git-config
     @echo ""
