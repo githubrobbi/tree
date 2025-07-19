@@ -133,7 +133,7 @@ default:
     @echo "  just lint-prod    # Ultra-strict production linting"
     @echo "  just lint-tests   # Pragmatic test linting"
     @echo "  just build        # Build release binary"
-    @echo "  just install      # Install binary to ~/bin"
+    @echo "  just install      # Install binary to ~/bin (tre.exe on Windows)"
     @echo "  just deploy       # Deploy binary (alias for install)"
     @echo ""
     @echo "🔧 Development:"
@@ -333,15 +333,17 @@ copy-binary profile:
     # Get the actual target directory from cargo metadata
     TARGET_DIR=$(cargo metadata --format-version 1 --no-deps | grep -o '"target_directory":"[^"]*"' | cut -d'"' -f4)
 
-    # Determine binary name and extension based on OS
+    # Determine source and target binary names based on OS
     if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
-        BINARY_NAME="tree.exe"
+        SOURCE_BINARY="tree.exe"
+        TARGET_BINARY="tre.exe"  # Rename to avoid Windows tree.exe conflict
     else
-        BINARY_NAME="tree"
+        SOURCE_BINARY="tree"
+        TARGET_BINARY="tree"
     fi
 
-    # Construct the full path to the binary
-    SOURCE_PATH="$TARGET_DIR/{{profile}}/$BINARY_NAME"
+    # Construct the full path to the source binary
+    SOURCE_PATH="$TARGET_DIR/{{profile}}/$SOURCE_BINARY"
 
     # Verify the binary exists
     if [[ ! -f "$SOURCE_PATH" ]]; then
@@ -350,15 +352,15 @@ copy-binary profile:
         exit 1
     fi
 
-    # Copy binary to ~/bin
-    cp "$SOURCE_PATH" ~/bin/
+    # Copy binary to ~/bin with target name
+    cp "$SOURCE_PATH" ~/bin/$TARGET_BINARY
 
     # Set executable permissions on Unix-like systems
     if [[ "$OSTYPE" != "msys"* ]] && [[ "$OSTYPE" != "cygwin"* ]] && [[ -z "$WINDIR" ]]; then
-        chmod +x ~/bin/$BINARY_NAME
+        chmod +x ~/bin/$TARGET_BINARY
     fi
 
-    printf "\033[0;32m✅ Binary installed to ~/bin/$BINARY_NAME\033[0m\n"
+    printf "\033[0;32m✅ Binary installed to ~/bin/$TARGET_BINARY\033[0m\n"
     printf "\033[0;34m📁 Source: $SOURCE_PATH\033[0m\n"
 
     # Check if ~/bin is in PATH and provide guidance if not
@@ -373,36 +375,9 @@ _check-path:
 
     # Check if ~/bin is in PATH
     if echo "$PATH" | grep -q "$HOME_BIN"; then
-        # Special check for Windows tree command conflict
         if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
-            # Check if Windows system tree.exe takes precedence (try multiple methods)
-            WHICH_TREE=""
-            if command -v where >/dev/null 2>&1; then
-                WHICH_TREE=$(where tree 2>/dev/null | head -1 || echo "")
-            elif command -v which >/dev/null 2>&1; then
-                WHICH_TREE=$(which tree 2>/dev/null || echo "")
-            else
-                # Fallback: check common locations
-                if [[ -f "/c/Windows/System32/tree.exe" ]]; then
-                    WHICH_TREE="/c/Windows/System32/tree.exe"
-                elif [[ -f "C:\\Windows\\System32\\tree.exe" ]]; then
-                    WHICH_TREE="C:\\Windows\\System32\\tree.exe"
-                fi
-            fi
-
-            if [[ "$WHICH_TREE" == *"System32"* ]] || [[ "$WHICH_TREE" == *"system32"* ]]; then
-                printf "\033[1;33m⚠️  Windows system tree.exe takes precedence over your custom tree.exe\033[0m\n"
-                printf "\033[0;34m💡 Solutions:\033[0m\n"
-                echo "  1. Use full path: ~/bin/tree.exe"
-                echo "  2. Create an alias: alias tree='~/bin/tree.exe'"
-                echo "  3. Move ~/bin BEFORE system32 in PATH (advanced)"
-                echo "  4. Rename binary to 'mytree.exe' to avoid conflict"
-                echo ""
-                printf "\033[0;34m🔍 Current tree command: $WHICH_TREE\033[0m\n"
-                printf "\033[0;32m📍 Your custom tree: ~/bin/tree.exe\033[0m\n"
-            else
-                printf "\033[0;32m✅ ~/bin is in your PATH and tree command works correctly!\033[0m\n"
-            fi
+            printf "\033[0;32m✅ ~/bin is in your PATH - you can run 'tre' from anywhere!\033[0m\n"
+            printf "\033[0;34m💡 Note: Binary renamed to 'tre.exe' to avoid Windows tree.exe conflict\033[0m\n"
         else
             printf "\033[0;32m✅ ~/bin is in your PATH - you can run 'tree' from anywhere!\033[0m\n"
         fi
@@ -439,7 +414,11 @@ _check-path:
 
         echo ""
         printf "\033[0;34m🔄 After updating PATH, restart your terminal or run 'source' command\033[0m\n"
-        printf "\033[0;32m📍 Current binary location: ~/bin/tree\033[0m\n"
+        if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "cygwin"* ]] || [[ -n "$WINDIR" ]]; then
+            printf "\033[0;32m📍 Current binary location: ~/bin/tre.exe\033[0m\n"
+        else
+            printf "\033[0;32m📍 Current binary location: ~/bin/tree\033[0m\n"
+        fi
     fi
 
 # ─────────────────────────────────────────
