@@ -267,3 +267,147 @@ fn render_sorting_and_order() {
 
     assert!(m_pos < z_pos && z_pos < a_pos && a_pos < b_pos);
 }
+
+/// An I/O failure surfaces the offending path, not a bare OS message.
+#[test]
+fn test_cli_io_error_names_the_offending_path() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+
+    // `.tree_ignore` exists as a directory, so reading it as text fails.
+    fs::create_dir(root.join(".tree_ignore")).unwrap();
+
+    let ignore_path = root.join(".tree_ignore");
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg(root)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("I/O error at"))
+        .stderr(predicate::str::contains(ignore_path.display().to_string()));
+}
+
+/// Build `root/level1/level2/level3`, each level holding one marker file.
+///
+/// Returns the temporary directory so the caller keeps ownership of the
+/// RAII guard that cleans it up.
+fn nested_fixture() -> TempDir {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+
+    let deep = root.join("level1").join("level2").join("level3");
+    fs::create_dir_all(&deep).unwrap();
+
+    fs::write(root.join("root_file.txt"), "").unwrap();
+    fs::write(root.join("level1/file_one.txt"), "").unwrap();
+    fs::write(root.join("level1/level2/file_two.txt"), "").unwrap();
+    fs::write(deep.join("file_three.txt"), "").unwrap();
+
+    tmp
+}
+
+/// `--max-depth 1` lists the root's immediate children and nothing below them.
+#[test]
+fn test_cli_max_depth_one_lists_only_immediate_children() {
+    let tmp = nested_fixture();
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg("--max-depth")
+        .arg("1")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        // The boundary directory itself is still rendered ...
+        .stdout(predicate::str::contains("level1/"))
+        .stdout(predicate::str::contains("root_file.txt"))
+        // ... but nothing inside it is.
+        .stdout(predicate::str::contains("file_one.txt").not())
+        .stdout(predicate::str::contains("level2").not());
+}
+
+/// The `-L` short flag is equivalent to `--max-depth`.
+#[test]
+fn test_cli_max_depth_short_flag_descends_further() {
+    let tmp = nested_fixture();
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg("-L")
+        .arg("2")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("level1/"))
+        .stdout(predicate::str::contains("file_one.txt"))
+        .stdout(predicate::str::contains("level2/"))
+        // Depth 3 is beyond the limit.
+        .stdout(predicate::str::contains("file_two.txt").not())
+        .stdout(predicate::str::contains("level3").not());
+}
+
+/// Without the flag the whole hierarchy is rendered.
+#[test]
+fn test_cli_without_max_depth_renders_full_tree() {
+    let tmp = nested_fixture();
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("level3/"))
+        .stdout(predicate::str::contains("file_three.txt"));
+}
+
+/// A depth of zero is rejected at parse time with a helpful message.
+#[test]
+fn test_cli_max_depth_zero_is_rejected() {
+    let tmp = TempDir::new().unwrap();
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg("--max-depth")
+        .arg("0")
+        .arg(tmp.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("depth must be at least 1"));
+}
+
+/// Non-numeric depths are rejected too, rather than silently ignored.
+#[test]
+fn test_cli_max_depth_non_numeric_is_rejected() {
+    let tmp = TempDir::new().unwrap();
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg("--max-depth")
+        .arg("deep")
+        .arg(tmp.path())
+        .assert()
+        .failure();
+}
+
+/// `--max-depth` composes with `--directories-only` instead of overriding it.
+#[test]
+fn test_cli_max_depth_combines_with_directories_only() {
+    let tmp = nested_fixture();
+
+    Command::cargo_bin("tree")
+        .unwrap()
+        .arg("--directories-only")
+        .arg("--max-depth")
+        .arg("2")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("level1/"))
+        .stdout(predicate::str::contains("level2/"))
+        // Files are suppressed by -d at every level ...
+        .stdout(predicate::str::contains("root_file.txt").not())
+        .stdout(predicate::str::contains("file_one.txt").not())
+        // ... and level 3 is suppressed by the depth cap.
+        .stdout(predicate::str::contains("level3").not());
+}

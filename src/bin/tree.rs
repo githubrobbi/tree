@@ -33,6 +33,10 @@
 //! # Print specific directory
 //! tree /path/to/project
 //!
+//! # Limit output to the top two levels
+//! tree --max-depth 2
+//! tree -L 2
+//!
 //! # Clean up .tree_ignore files
 //! tree --clear
 //! tree -c
@@ -91,12 +95,14 @@ Features:
   • Unicode tree visualization with clean box-drawing characters
   • Automatic .gitignore integration
   • Custom .tree_ignore files for project-specific filtering
+  • Depth limiting to render only the top N levels
   • Fast performance with efficient directory traversal
   • Cross-platform support (Windows, macOS, Linux)
 
 Examples:
   tree                    Print current directory tree
   tree /path/to/project   Print specific directory tree
+  tree --max-depth 2      Print only the top two levels
   tree --clear            Remove all .tree_ignore files
 ")]
 #[command(version)]
@@ -130,6 +136,32 @@ struct Cli {
     /// Explicitly setting this flag overrides --directories-only if both are specified.
     #[arg(long, short = 'a')]
     all: bool,
+
+    /// Limit the tree to N levels of depth.
+    ///
+    /// `--max-depth 1` lists only the immediate children of the root,
+    /// `--max-depth 2` descends one level further, and so on. Directories at
+    /// the limit are still shown; only their contents are omitted. When the
+    /// flag is absent the whole hierarchy is rendered.
+    #[arg(long, short = 'L', value_name = "N", value_parser = parse_max_depth)]
+    max_depth: Option<usize>,
+}
+
+/// Parse and validate the `--max-depth` argument.
+///
+/// Rejects `0` because a zero-level tree carries no information beyond the root
+/// line itself, matching the behaviour of the classic Unix `tree -L`.
+///
+/// # Errors
+///
+/// Returns a human-readable message when the value is not a non-negative
+/// integer, or when it is exactly `0`.
+fn parse_max_depth(raw: &str) -> Result<usize, String> {
+    match raw.parse::<usize>() {
+        Ok(0) => Err("depth must be at least 1".to_owned()),
+        Ok(depth) => Ok(depth),
+        Err(err) => Err(err.to_string()),
+    }
 }
 
 /// Application entry point and main execution logic.
@@ -167,7 +199,7 @@ fn main() -> Result<()> {
     } else {
         // Print mode: Generate and display directory tree
         let show_files = !cli.directories_only || cli.all;
-        tree::print_with_options(&cli.path, &mut std::io::stdout(), show_files)?;
+        tree::print_with_options(&cli.path, &mut std::io::stdout(), show_files, cli.max_depth)?;
     }
 
     Ok(())

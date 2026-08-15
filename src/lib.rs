@@ -18,6 +18,7 @@
 //! - **Unicode tree rendering** with proper box-drawing characters
 //! - **Automatic `.gitignore` integration** via the `ignore` crate
 //! - **Custom ignore patterns** through `.tree_ignore` files
+//! - **Depth limiting** to render only the top *N* levels of a hierarchy
 //! - **Memory efficient** streaming output to any `Write` sink
 //! - **Zero panics** with comprehensive error handling
 //! - **Cross-platform** support (Windows, macOS, Linux)
@@ -100,7 +101,7 @@ pub(crate) mod tree_printer;
 ///     Ok(()) => println!("Tree printed successfully"),
 ///     Err(TreeError::PathMissing(path)) => eprintln!("Directory not found: {}", path),
 ///     Err(TreeError::NotADirectory(path)) => eprintln!("Not a directory: {}", path),
-///     Err(TreeError::Io(io_err)) => eprintln!("I/O error: {}", io_err),
+///     Err(TreeError::Io { path, source }) => eprintln!("I/O error at {}: {}", path, source),
 ///     Err(TreeError::Other(err)) => eprintln!("Other error: {}", err),
 /// }
 /// ```
@@ -126,16 +127,61 @@ pub enum TreeError {
     /// This includes permission errors, disk full errors, network filesystem
     /// issues, and any other `std::io::Error` that might occur during directory
     /// traversal or file operations.
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
+    ///
+    /// The variant always names the file or directory that was being operated
+    /// on when the failure occurred, so callers never have to guess which of
+    /// the many paths visited during a traversal is the culprit.
+    /// The underlying cause is deliberately *not* interpolated into the
+    /// message: it is reachable through [`std::error::Error::source`], and
+    /// reporters such as `anyhow` print the chain themselves.
+    #[error("I/O error at `{path}`")]
+    Io {
+        /// Display representation of the path that was being operated on.
+        path: String,
+        /// The underlying operating-system error.
+        #[source]
+        source: std::io::Error,
+    },
 
     /// Catch-all for other internal errors.
     ///
     /// This handles any unexpected errors from internal operations, such as
-    /// file format parsing errors or other edge cases. In practice, this should
-    /// be rare in normal usage.
+    /// file format parsing errors or other edge cases. The library's own
+    /// operations no longer produce this variant — every failure they can
+    /// raise is either a path-validation error or a located [`TreeError::Io`]
+    /// — but it remains part of the public API for forward compatibility.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+impl TreeError {
+    /// Pair a raw [`std::io::Error`] with the path that produced it.
+    ///
+    /// This is the only way [`TreeError::Io`] is constructed internally, which
+    /// is what guarantees the variant is never built without a path. It is
+    /// public so downstream code layering on top of this crate can report I/O
+    /// failures in the same located form.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use std::io::{Error, ErrorKind};
+    /// use std::path::Path;
+    /// use tree::TreeError;
+    ///
+    /// let err = TreeError::io(
+    ///     Path::new("/tmp/example"),
+    ///     Error::new(ErrorKind::PermissionDenied, "denied"),
+    /// );
+    /// assert!(err.to_string().contains("/tmp/example"));
+    /// ```
+    #[must_use]
+    pub fn io(path: &Path, source: std::io::Error) -> Self {
+        Self::Io {
+            path: path.display().to_string(),
+            source,
+        }
+    }
 }
 
 /// Print a directory hierarchy to any `Write` sink.
@@ -197,7 +243,7 @@ pub enum TreeError {
 /// - Internal operations encounter unexpected errors ([`TreeError::Other`])
 pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeError> {
     validate_root(root)?;
-    tree_printer::print_directory_tree_to_writer(root, writer, true).map_err(TreeError::Other)
+    tree_printer::print_directory_tree_to_writer(root, writer, true, None)
 }
 
 /// Generate and print a directory tree with display options.
@@ -210,11 +256,21 @@ pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeE
 /// * `root` - The root directory path to start tree generation from
 /// * `writer` - Output destination implementing [`std::io::Write`]
 /// * `show_files` - Whether to include files in the output (true) or directories only (false)
+/// * `max_depth` - Optional cap on how many levels below `root` are rendered
 ///
 /// # Display Modes
 ///
 /// * `show_files = true` - Shows both files and directories (default behavior)
 /// * `show_files = false` - Shows only directories, files are omitted
+///
+/// # Depth Limiting
+///
+/// * `max_depth = None` - Traverse the entire hierarchy (default behavior)
+/// * `max_depth = Some(1)` - List only the immediate children of `root`
+/// * `max_depth = Some(n)` - Descend at most `n` levels below `root`
+///
+/// A directory sitting at the depth limit is still printed; only its contents
+/// are elided. `Some(0)` therefore emits the root line and nothing else.
 ///
 /// # Examples
 ///
@@ -223,11 +279,14 @@ pub fn print<W: std::io::Write>(root: &Path, writer: &mut W) -> Result<(), TreeE
 /// use tree::{print_with_options, TreeError};
 ///
 /// fn main() -> Result<(), TreeError> {
-///     // Show only directories
-///     print_with_options(Path::new("."), &mut std::io::stdout(), false)?;
+///     // Show only directories, unlimited depth
+///     print_with_options(Path::new("."), &mut std::io::stdout(), false, None)?;
 ///
 ///     // Show files and directories (same as tree::print)
-///     print_with_options(Path::new("."), &mut std::io::stdout(), true)?;
+///     print_with_options(Path::new("."), &mut std::io::stdout(), true, None)?;
+///
+///     // Top two levels only
+///     print_with_options(Path::new("."), &mut std::io::stdout(), true, Some(2))?;
 ///
 ///     Ok(())
 /// }
@@ -244,9 +303,10 @@ pub fn print_with_options<W: std::io::Write>(
     root: &Path,
     writer: &mut W,
     show_files: bool,
+    max_depth: Option<usize>,
 ) -> Result<(), TreeError> {
     validate_root(root)?;
-    tree_printer::print_directory_tree_to_writer(root, writer, show_files).map_err(TreeError::Other)
+    tree_printer::print_directory_tree_to_writer(root, writer, show_files, max_depth)
 }
 
 /// Remove every `.tree_ignore` file below the specified root directory.
@@ -314,7 +374,7 @@ pub fn print_with_options<W: std::io::Write>(
 /// - Internal operations encounter unexpected errors ([`TreeError::Other`])
 pub fn clear(root: &Path) -> Result<u64, TreeError> {
     validate_root(root)?;
-    tree_printer::clear_ignore_files_count(root).map_err(TreeError::Other)
+    tree_printer::remove_ignore_files(root)
 }
 
 /// Validates that a path exists and is a directory.

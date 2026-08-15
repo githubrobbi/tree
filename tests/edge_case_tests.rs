@@ -22,10 +22,11 @@
 
 #![allow(clippy::unwrap_used)] // Tests should panic on failure
 #![allow(clippy::expect_used)] // Tests should panic on failure
+#![allow(clippy::panic)] // Tests should panic on failure
 
 use std::fs;
 use tempfile::TempDir;
-use tree::{clear, print};
+use tree::{TreeError, clear, print, print_with_options};
 
 /// Test clearing when no `.tree_ignore` files exist (covers early return path)
 #[test]
@@ -244,7 +245,7 @@ fn gitignore_patterns_are_honoured() {
     assert!(tree.contains("normal.log"));
     // Note: gitignore behavior may vary depending on git repository state
     // This test primarily ensures the WalkBuilder configuration doesn't panic
-    assert!(!tree.is_empty()); // Basic functionality test
+    assert_ne!(tree, ""); // Basic functionality test
 }
 
 /// Validate that printing an empty directory still produces the root path
@@ -353,4 +354,251 @@ fn directory_file_sorting_order() {
         dir_pos < file_pos,
         "Directory should come before file in output"
     );
+}
+
+/// Create `root/level1/level2/level3` with one marker file per level.
+fn build_nested_tree(root: &std::path::Path) {
+    let deep = root.join("level1").join("level2").join("level3");
+    fs::create_dir_all(&deep).unwrap();
+
+    fs::write(root.join("root_file.txt"), "0").unwrap();
+    fs::write(root.join("level1/file_one.txt"), "1").unwrap();
+    fs::write(root.join("level1/level2/file_two.txt"), "2").unwrap();
+    fs::write(deep.join("file_three.txt"), "3").unwrap();
+}
+
+/// Render `root` through the public API and return the output as a `String`.
+fn render(root: &std::path::Path, show_files: bool, max_depth: Option<usize>) -> String {
+    let mut out = Vec::new();
+    print_with_options(root, &mut out, show_files, max_depth).unwrap();
+    String::from_utf8(out).unwrap()
+}
+
+/// `Some(0)` emits the root line and nothing else.
+#[test]
+fn max_depth_zero_renders_root_line_only() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    build_nested_tree(root);
+
+    let output = render(root, true, Some(0));
+
+    assert_eq!(output, format!("{}\n", root.display()));
+}
+
+/// `Some(1)` stops one level down, but still names the boundary directory.
+#[test]
+fn max_depth_one_keeps_boundary_directory_but_not_its_contents() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    build_nested_tree(root);
+
+    let output = render(root, true, Some(1));
+
+    assert!(output.contains("level1/"), "boundary dir must be listed");
+    assert!(output.contains("root_file.txt"));
+    assert!(!output.contains("file_one.txt"), "must not descend");
+    assert!(!output.contains("level2"));
+}
+
+/// Each additional level unlocks exactly one more layer of the hierarchy.
+#[test]
+fn max_depth_unlocks_one_layer_at_a_time() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    build_nested_tree(root);
+
+    let depth_two = render(root, true, Some(2));
+    assert!(depth_two.contains("file_one.txt"));
+    assert!(depth_two.contains("level2/"));
+    assert!(!depth_two.contains("file_two.txt"));
+    assert!(!depth_two.contains("level3"));
+
+    let depth_three = render(root, true, Some(3));
+    assert!(depth_three.contains("file_two.txt"));
+    assert!(depth_three.contains("level3/"));
+    assert!(!depth_three.contains("file_three.txt"));
+}
+
+/// A limit at or beyond the deepest level is indistinguishable from `None`.
+#[test]
+fn max_depth_beyond_the_tree_matches_unlimited() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    build_nested_tree(root);
+
+    let unlimited = render(root, true, None);
+    assert!(unlimited.contains("file_three.txt"));
+
+    assert_eq!(render(root, true, Some(4)), unlimited);
+    assert_eq!(render(root, true, Some(99)), unlimited);
+}
+
+/// Depth limiting is orthogonal to the `show_files` filter.
+#[test]
+fn max_depth_composes_with_directories_only() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    build_nested_tree(root);
+
+    let output = render(root, false, Some(2));
+
+    assert!(output.contains("level1/"));
+    assert!(output.contains("level2/"));
+    assert!(!output.contains("root_file.txt"));
+    assert!(!output.contains("file_one.txt"));
+    assert!(!output.contains("level3"));
+}
+
+/// Depth limiting must not skip the `.tree_ignore` bootstrap or path validation.
+#[test]
+fn max_depth_still_validates_root_and_creates_ignore_file() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    build_nested_tree(root);
+
+    let _ = render(root, true, Some(1));
+    assert!(root.join(".tree_ignore").exists());
+
+    let missing = root.join("no_such_dir");
+    let mut out = Vec::new();
+    assert!(print_with_options(&missing, &mut out, true, Some(1)).is_err());
+}
+
+/// A sink that refuses every write, to force a deterministic I/O failure
+/// without depending on filesystem permissions.
+#[derive(Debug)]
+struct FailingWriter;
+
+impl std::io::Write for FailingWriter {
+    fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::BrokenPipe,
+            "sink closed",
+        ))
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// A sink that accepts the first line and then refuses everything else, so the
+/// failure lands on a child entry rather than on the root line.
+#[derive(Debug)]
+struct FailAfterFirstLine {
+    lines_seen: usize,
+}
+
+impl std::io::Write for FailAfterFirstLine {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if buf.contains(&b'\n') {
+            self.lines_seen += 1;
+            return Ok(buf.len());
+        }
+        if self.lines_seen >= 1 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "device gone",
+            ));
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Unwrap a [`TreeError::Io`], failing loudly on any other variant.
+fn expect_io(err: TreeError) -> (String, std::io::Error) {
+    match err {
+        TreeError::Io { path, source } => (path, source),
+        other => panic!("expected TreeError::Io, got {other:?}"),
+    }
+}
+
+/// A failure while writing the root line names the root directory.
+#[test]
+fn io_failure_on_root_line_carries_the_root_path() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+
+    let err = print(root, &mut FailingWriter).unwrap_err();
+
+    // The path must survive into the user-facing message, not just the fields.
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains(&root.display().to_string()),
+        "message lost the path: {rendered}"
+    );
+
+    // The cause stays reachable through the source chain rather than being
+    // duplicated into the message.
+    assert!(std::error::Error::source(&err).is_some());
+
+    let (path, source) = expect_io(err);
+    assert_eq!(path, root.display().to_string());
+    assert_eq!(source.kind(), std::io::ErrorKind::BrokenPipe);
+    assert!(source.to_string().contains("sink closed"));
+}
+
+/// A failure reading `.tree_ignore` names that file, not the root.
+#[test]
+fn io_failure_on_ignore_file_carries_the_ignore_file_path() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+
+    // A *directory* named `.tree_ignore` exists: the bootstrap is skipped
+    // because the path exists, but reading it as text fails.
+    fs::create_dir(root.join(".tree_ignore")).unwrap();
+
+    let mut out = Vec::new();
+    let err = print(root, &mut out).unwrap_err();
+    let (path, _) = expect_io(err);
+
+    assert_eq!(path, root.join(".tree_ignore").display().to_string());
+}
+
+/// The offending path is specific to the entry that failed, not just the root.
+#[test]
+fn io_failure_while_rendering_names_the_offending_entry() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    fs::create_dir(root.join("only_child")).unwrap();
+
+    // Succeed for the root line, then fail on the first entry written.
+    let mut writer = FailAfterFirstLine { lines_seen: 0 };
+    let err = print(root, &mut writer).unwrap_err();
+    let (path, source) = expect_io(err);
+
+    assert_eq!(path, root.join("only_child").display().to_string());
+    assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
+}
+
+/// `clear` reports located errors too, and a healthy run is still `Ok`.
+#[test]
+fn clear_succeeds_and_shares_the_located_error_type() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    fs::write(root.join(".tree_ignore"), "target\n").unwrap();
+
+    assert_eq!(clear(root).unwrap(), 1);
+
+    // Validation errors stay distinct from I/O errors.
+    let err = clear(&root.join("absent")).unwrap_err();
+    assert!(matches!(err, TreeError::PathMissing(_)));
+}
+
+/// The constructor is public so callers can build located errors themselves.
+#[test]
+fn io_constructor_records_the_path() {
+    let err = TreeError::io(
+        std::path::Path::new("/some/where/file.txt"),
+        std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+    );
+
+    let (path, source) = expect_io(err);
+    assert_eq!(path, "/some/where/file.txt");
+    assert_eq!(source.kind(), std::io::ErrorKind::PermissionDenied);
 }
