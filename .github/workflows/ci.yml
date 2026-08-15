@@ -22,7 +22,7 @@ jobs:
           - nightly
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@master
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -96,7 +96,7 @@ jobs:
       run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         files: lcov.info
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -130,7 +130,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable

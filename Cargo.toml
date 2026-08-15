@@ -12,8 +12,8 @@
 [package]
 name = "tree"
 version = "0.1.47"
-edition = "2021"
-rust-version = "1.77"
+edition = "2024"
+rust-version = "1.95"
 description = "A fast, modern directory tree printer with intelligent ignore patterns and .gitignore integration"
 license = "MIT"
 repository = "https://github.com/githubrobbi/tree"
@@ -66,10 +66,10 @@ path = "src/bin/tree.rs"
 # Runtime dependencies (alphabetical, version-pinned for stability)
 # ──────────────────────────────────────────────────────────────────────────────
 [dependencies]
-anyhow = "1.0.103"
-clap = { version = "4.6.1", features = ["derive"] }
-ignore = "0.4.27"
-thiserror = "2.0.18"
+anyhow = "1.0.104"
+clap = { version = "4.6.6", features = ["derive"] }
+ignore = "0.4.33"
+thiserror = "2.0.20"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Development & testing dependencies
